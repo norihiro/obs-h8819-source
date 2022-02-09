@@ -11,6 +11,14 @@ either expressed or implied and the plugin is to be used at your own risk.
 The author of this plugin has no relationship with Roland.
 Do not ask Roland for support of this plugin.
 
+## Properties
+
+### Ethernet device
+Specifies which ethernet device to be monitored.
+
+### Channel L / R
+Specify left and right channel to be captured.
+
 ## See also
 
 - [reacdriver](https://github.com/per-gron/reacdriver)
