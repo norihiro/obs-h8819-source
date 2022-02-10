@@ -32,6 +32,8 @@ include(external/FindLibObs.cmake)
 endif()
 
 find_package(LibObs REQUIRED)
+find_package(PkgConfig)
+pkg_check_modules(LIBPCAP REQUIRED libpcap)
 
 configure_file(
 	src/plugin-macros.h.in
@@ -67,6 +69,15 @@ set(PLUGIN_HEADERS
 
 # --- Platform-independent build settings ---
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES} ${PLUGIN_HEADERS})
+
+add_executable(obs-421921aef-proc
+	src/capdev-proc.c
+	src/capdev-proc.h
+)
+
+target_link_libraries(obs-421921aef-proc
+	pcap
+)
 
 include_directories(
 	${LIBOBS_INCLUDE_DIR}
@@ -171,6 +182,9 @@ if(UNIX AND NOT APPLE)
 		LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/obs-plugins")
 
 	install(DIRECTORY data/
+		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
+
+	install(TARGETS obs-421921aef-proc
 		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
 endif()
 # --- End of section ---
