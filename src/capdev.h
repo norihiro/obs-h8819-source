@@ -4,6 +4,7 @@
 #include "common.h"
 
 capdev_t *capdev_find_or_create(const char *device_name);
+capdev_t *capdev_get_ref(capdev_t *dev);
 void capdev_release(capdev_t *dev);
 
 void capdev_link_source(capdev_t *dev, source_t *src, const int *channels);

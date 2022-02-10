@@ -54,6 +54,7 @@ configure_file(
 set(PLUGIN_SOURCES
 	src/plugin-main.c
 	src/source.c
+	src/capdev.c
 )
 
 set(PLUGIN_HEADERS
@@ -61,6 +62,7 @@ set(PLUGIN_HEADERS
 	src/common.h
 	src/source.h
 	src/capdev.h
+	src/capdev-proc.h
 )
 
 # --- Platform-independent build settings ---
