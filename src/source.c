@@ -53,7 +53,8 @@ static void update_device(struct source_s *s, const char *device_name, int chann
 	s->channel_l = channel_l;
 	s->channel_r = channel_r;
 
-	capdev_release(old_dev);
+	if (old_dev)
+		capdev_release(old_dev);
 }
 
 static void update_channels(struct source_s *s, int channel_l, int channel_r)

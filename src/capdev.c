@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <sys/wait.h>
 #include <obs-module.h>
 #include "util/threading.h"
 #include "plugin-macros.generated.h"
@@ -253,7 +254,7 @@ bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 		close(pipe_data[0]);
 		close(pipe_data[1]);
 		char *proc_path = obs_module_file(PROC_4219);
-		if (execlp(PROC_4219, proc_path, dev->name, NULL) < 0) {
+		if (execlp(proc_path, PROC_4219, dev->name, NULL) < 0) {
 			fprintf(stderr, "Error: failed to exec \"%s\"\n", proc_path);
 			close(0);
 			close(1);
@@ -315,6 +316,7 @@ static inline void s24lep_to_fltp(float *ptr_dst, const char *ptr_src, size_t n_
 
 static void *thread_main(void *data)
 {
+	os_set_thread_name("421921aef");
 	struct capdev_s *dev = data;
 
 	int fd_req = -1, fd_data = -1;
@@ -329,6 +331,18 @@ static void *thread_main(void *data)
 			req.channel_mask = dev->channel_mask;
 			write(fd_req, &req, sizeof(req));
 		}
+
+		fd_set readfds;
+		FD_ZERO(&readfds);
+		FD_SET(fd_data, &readfds);
+		struct timeval timeout = {
+			.tv_sec = 0,
+			.tv_usec = 50*1000
+		};
+		int ret_select = select(fd_data+1, &readfds, NULL, NULL, &timeout);
+
+		if (ret_select <= 0)
+			continue;
 
 		struct capdev_proc_header_s header_data;
 		struct data_info_s info;
@@ -385,10 +399,14 @@ static void *thread_main(void *data)
 		pthread_mutex_unlock(&dev->mutex);
 	}
 
+	blog(LOG_INFO, "exiting 421921aef thread");
+
 	close(fd_req);
 	close(fd_data);
 
-	wait(dev->pid);
+	int retval;
+	waitpid(dev->pid, &retval, 0);
+	blog(LOG_INFO, "exit 421921aef proc %d", retval);
 
 	return NULL;
 }
