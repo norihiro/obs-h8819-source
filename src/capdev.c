@@ -388,5 +388,7 @@ static void *thread_main(void *data)
 	close(fd_req);
 	close(fd_data);
 
+	wait(dev->pid);
+
 	return NULL;
 }
