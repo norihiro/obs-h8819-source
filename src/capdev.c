@@ -335,11 +335,8 @@ static void *thread_main(void *data)
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(fd_data, &readfds);
-		struct timeval timeout = {
-			.tv_sec = 0,
-			.tv_usec = 50*1000
-		};
-		int ret_select = select(fd_data+1, &readfds, NULL, NULL, &timeout);
+		struct timeval timeout = {.tv_sec = 0, .tv_usec = 50 * 1000};
+		int ret_select = select(fd_data + 1, &readfds, NULL, NULL, &timeout);
 
 		if (ret_select <= 0)
 			continue;
@@ -406,7 +403,7 @@ static void *thread_main(void *data)
 
 	int retval;
 	waitpid(dev->pid, &retval, 0);
-	blog(LOG_INFO, "exit 421921aef proc %d", retval);
+	blog(retval ? LOG_ERROR : LOG_INFO, "exit 421921aef proc %d", retval);
 
 	return NULL;
 }
