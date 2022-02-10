@@ -12,6 +12,7 @@ set(PLUGIN_AUTHOR "Norihiro Kamae")
 # Replace `com.example.obs-plugin-template` with a unique Bundle ID for macOS releases
 # (used both in the installer and when submitting the installer for notarization)
 set(MACOS_BUNDLEID "net.nagater.obs-421921aef-source")
+set(ID_PREFIX "net.nagater.obs-421921aef-source.")
 
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
@@ -52,10 +53,14 @@ configure_file(
 
 set(PLUGIN_SOURCES
 	src/plugin-main.c
+	src/source.c
 )
 
 set(PLUGIN_HEADERS
 	src/plugin-macros.generated.h
+	src/common.h
+	src/source.h
+	src/capdev.h
 )
 
 # --- Platform-independent build settings ---
@@ -73,11 +78,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
 # --- Windows-specific build settings and tasks ---
 if(WIN32)
-	if(NOT DEFINED OBS_FRONTEND_LIB)
-		set(OBS_FRONTEND_LIB "OBS_FRONTEND_LIB-NOTFOUND" CACHE FILEPATH "OBS frontend library")
-		message(FATAL_ERROR "Could not find OBS Frontend API\'s library !")
-	endif()
-
 	# Enable Multicore Builds and disable FH4 (to not depend on VCRUNTIME140_1.DLL when building with VS2019)
 	if (MSVC)
 		add_definitions(/MP /d2FH4-)
@@ -164,7 +164,6 @@ if(UNIX AND NOT APPLE)
 	include(GNUInstallDirs)
 
 	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
-	target_link_libraries(${CMAKE_PROJECT_NAME} obs-frontend-api)
 
 	install(TARGETS ${CMAKE_PROJECT_NAME}
 		LIBRARY DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}/obs-plugins")
