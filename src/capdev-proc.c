@@ -7,6 +7,8 @@
 #include "capdev-proc.h"
 
 #define ETHER_HEADER_LEN (6 * 2 + 2)
+#define L2_HEADER_LEN (ETHER_HEADER_LEN + 2 + 2 + 32)
+
 struct packet_header_s
 {
 	uint8_t dhost[6];
@@ -37,6 +39,29 @@ static inline int countones_uint64(uint64_t n)
 	return (int)n;
 }
 
+static inline void convert_to_pcm24lep(uint8_t *dptr, const uint8_t *sptr, uint64_t channel_mask)
+{
+	for (int ch = 0; ch < 40; ch++) {
+		if (!(channel_mask & (1LL << ch)))
+			continue;
+
+		const uint8_t *sptr1 = sptr + (ch >> 1) * 6;
+		for (int is = 0; is < 12; is++) {
+			if ((ch & 1) == 0) {
+				*dptr++ = sptr1[3];
+				*dptr++ = sptr1[0];
+				*dptr++ = sptr1[1];
+			}
+			else {
+				*dptr++ = sptr1[4];
+				*dptr++ = sptr1[5];
+				*dptr++ = sptr1[2];
+			}
+			sptr1 += 40 * 3;
+		}
+	}
+}
+
 static void got_msg(const char *data_packet, size_t bytes, struct context_s *ctx)
 {
 	if (bytes < sizeof(struct packet_header_s) + 2)
@@ -55,10 +80,6 @@ static void got_msg(const char *data_packet, size_t bytes, struct context_s *ctx
 		return;
 	}
 
-	const uint8_t *data = data_packet + ETHER_HEADER_LEN;
-	int bytes_data = bytes - ETHER_HEADER_LEN;
-	int n_samples = 12;
-
 	uint8_t buf[12 * 40 * 3 + sizeof(struct capdev_proc_header_s)];
 	struct capdev_proc_header_s *header = (void *)buf;
 	int n_channel = countones_uint64(ctx->req.channel_mask);
@@ -68,6 +89,7 @@ static void got_msg(const char *data_packet, size_t bytes, struct context_s *ctx
 	header->n_data_bytes = 12 * 3 * n_channel;
 	uint8_t *pcm24lep = buf + sizeof(struct capdev_proc_header_s);
 
+	// TODO: Just send number of skipped samples and pad them later.
 	if (ctx->received_packets) {
 		uint16_t counter_exp = ctx->counter_last + 1;
 		if (counter_exp != packet_header->l2_counter) {
@@ -86,7 +108,7 @@ static void got_msg(const char *data_packet, size_t bytes, struct context_s *ctx
 		}
 	}
 
-	// TODO: convert to pcm24lep
+	convert_to_pcm24lep(pcm24lep, data_packet + L2_HEADER_LEN, header->channel_mask);
 
 	ssize_t written = write(1, buf, sizeof(struct capdev_proc_header_s) + header->n_data_bytes);
 	if (written != sizeof(struct capdev_proc_header_s) + header->n_data_bytes) {

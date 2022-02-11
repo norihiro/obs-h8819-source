@@ -303,7 +303,7 @@ static void calculate_data_info(struct capdev_proc_header_s *h, const char *buf,
 	}
 }
 
-static inline void s24lep_to_fltp(float *ptr_dst, const char *ptr_src, size_t n_samples)
+static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t n_samples)
 {
 	for (size_t n = n_samples; n > 0; n -= 3) {
 		uint32_t u = ptr_src[0] | ptr_src[1] << 8 | ptr_src[2] << 16;
