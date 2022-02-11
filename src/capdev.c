@@ -163,6 +163,7 @@ void capdev_link_source(capdev_t *dev, source_t *src, const int *channels)
 	item->next = dev->sources;
 	item->prev_next = &dev->sources;
 	dev->sources = item;
+	dev->channel_mask |= item->channel_mask;
 	pthread_mutex_unlock(&dev->mutex);
 }
 
@@ -275,17 +276,6 @@ struct data_info_s
 	int n_samples;
 };
 
-static inline int countones_uint64(uint64_t n)
-{
-	n = (n & 0xAAAAAAAAAAAAAAAAULL >> 1) + n & 0x5555555555555555ULL;
-	n = (n & 0xCCCCCCCCCCCCCCCCULL >> 2) + n & 0x3333333333333333ULL;
-	n = (n & 0xF0F0F0F0F0F0F0F0ULL >> 4) + n & 0x0F0F0F0F0F0F0F0FULL;
-	n = (n & 0xFF00FF00FF00FF00ULL >> 8) + n & 0x00FF00FF00FF00FFULL;
-	n = (n & 0xFFFF0000FFFF0000ULL >> 16) + n & 0x0000FFFF0000FFFFULL;
-	n = (n & 0xFFFFFFFF00000000ULL >> 32) + n & 0x00000000FFFFFFFFULL;
-	return (int)n;
-}
-
 static void calculate_data_info(struct capdev_proc_header_s *h, const char *buf, struct data_info_s *info)
 {
 	const char *ptr = buf;
@@ -305,7 +295,7 @@ static void calculate_data_info(struct capdev_proc_header_s *h, const char *buf,
 
 static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t n_samples)
 {
-	for (size_t n = n_samples; n > 0; n -= 3) {
+	for (size_t n = n_samples; n > 0; n--) {
 		uint32_t u = ptr_src[0] | ptr_src[1] << 8 | ptr_src[2] << 16;
 		int s = u & 0x800000 ? u - 0x1000000 : u;
 		*ptr_dst = (float)s / 8388608.0f;
@@ -329,6 +319,7 @@ static void *thread_main(void *data)
 	while (dev->refcnt > -1) {
 		if (dev->channel_mask != req.channel_mask) {
 			req.channel_mask = dev->channel_mask;
+			blog(LOG_INFO, "requesting channel_mask=%llx", req.channel_mask);
 			write(fd_req, &req, sizeof(req));
 		}
 

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <pcap.h>
 #include "capdev-proc.h"
+#include "common.h"
 
 #define ETHER_HEADER_LEN (6 * 2 + 2)
 #define L2_HEADER_LEN (ETHER_HEADER_LEN + 2 + 2 + 32)
@@ -28,24 +29,13 @@ struct context_s
 	bool cont;
 };
 
-static inline int countones_uint64(uint64_t n)
-{
-	n = (n & 0xAAAAAAAAAAAAAAAAULL >> 1) + n & 0x5555555555555555ULL;
-	n = (n & 0xCCCCCCCCCCCCCCCCULL >> 2) + n & 0x3333333333333333ULL;
-	n = (n & 0xF0F0F0F0F0F0F0F0ULL >> 4) + n & 0x0F0F0F0F0F0F0F0FULL;
-	n = (n & 0xFF00FF00FF00FF00ULL >> 8) + n & 0x00FF00FF00FF00FFULL;
-	n = (n & 0xFFFF0000FFFF0000ULL >> 16) + n & 0x0000FFFF0000FFFFULL;
-	n = (n & 0xFFFFFFFF00000000ULL >> 32) + n & 0x00000000FFFFFFFFULL;
-	return (int)n;
-}
-
 static inline void convert_to_pcm24lep(uint8_t *dptr, const uint8_t *sptr, uint64_t channel_mask)
 {
 	for (int ch = 0; ch < 40; ch++) {
 		if (!(channel_mask & (1LL << ch)))
 			continue;
 
-		const uint8_t *sptr1 = sptr + (ch >> 1) * 6;
+		const uint8_t *sptr1 = sptr + (ch & ~1) * 3;
 		for (int is = 0; is < 12; is++) {
 			if ((ch & 1) == 0) {
 				*dptr++ = sptr1[3];
@@ -62,7 +52,7 @@ static inline void convert_to_pcm24lep(uint8_t *dptr, const uint8_t *sptr, uint6
 	}
 }
 
-static void got_msg(const char *data_packet, size_t bytes, struct context_s *ctx)
+static void got_msg(const uint8_t *data_packet, size_t bytes, struct context_s *ctx)
 {
 	if (bytes < sizeof(struct packet_header_s) + 2)
 		return;
