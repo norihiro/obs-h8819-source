@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 # Change obs-plugintemplate to your plugin's name in a machine-readable format
 # (e.g.: obs-myawesomeplugin) and set 
-project(obs-421921aef-source)
+project(obs-h8819-source)
 set(CMAKE_PROJECT_VERSION 0.1.0) # TODO: update cmake to 3.12 or later and put to 'project'
 
 # Replace `Your Name Here` with the name (yours or your organization's) you want
@@ -11,8 +11,8 @@ set(PLUGIN_AUTHOR "Norihiro Kamae")
 
 # Replace `com.example.obs-plugin-template` with a unique Bundle ID for macOS releases
 # (used both in the installer and when submitting the installer for notarization)
-set(MACOS_BUNDLEID "net.nagater.obs-421921aef-source")
-set(ID_PREFIX "net.nagater.obs-421921aef-source.")
+set(MACOS_BUNDLEID "net.nagater.obs-h8819-source")
+set(ID_PREFIX "net.nagater.obs-h8819-source.")
 
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
@@ -70,12 +70,12 @@ set(PLUGIN_HEADERS
 # --- Platform-independent build settings ---
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES} ${PLUGIN_HEADERS})
 
-add_executable(obs-421921aef-proc
+add_executable(obs-h8819-proc
 	src/capdev-proc.c
 	src/capdev-proc.h
 )
 
-target_link_libraries(obs-421921aef-proc
+target_link_libraries(obs-h8819-proc
 	pcap
 )
 
@@ -184,7 +184,7 @@ if(UNIX AND NOT APPLE)
 	install(DIRECTORY data/
 		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
 
-	install(TARGETS obs-421921aef-proc
+	install(TARGETS obs-h8819-proc
 		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
 endif()
 # --- End of section ---

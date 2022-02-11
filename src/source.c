@@ -20,7 +20,7 @@ struct source_s
 static const char *get_name(void *type_data)
 {
 	UNUSED_PARAMETER(type_data);
-	return obs_module_text("421921aef Audio");
+	return obs_module_text("h8819 Audio");
 }
 
 static obs_properties_t *get_properties(void *data)

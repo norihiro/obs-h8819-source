@@ -11,7 +11,7 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static capdev_t *devices = NULL;
 
 #define N_CHANNELS 40
-#define PROC_4219 "obs-421921aef-proc"
+#define PROC_4219 "obs-h8819-proc"
 
 struct source_list_s
 {
@@ -306,7 +306,7 @@ static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t
 
 static void *thread_main(void *data)
 {
-	os_set_thread_name("421921aef");
+	os_set_thread_name("h8819");
 	struct capdev_s *dev = data;
 
 	int fd_req = -1, fd_data = -1;
@@ -387,14 +387,14 @@ static void *thread_main(void *data)
 		pthread_mutex_unlock(&dev->mutex);
 	}
 
-	blog(LOG_INFO, "exiting 421921aef thread");
+	blog(LOG_INFO, "exiting h8819 thread");
 
 	close(fd_req);
 	close(fd_data);
 
 	int retval;
 	waitpid(dev->pid, &retval, 0);
-	blog(retval ? LOG_ERROR : LOG_INFO, "exit 421921aef proc %d", retval);
+	blog(retval ? LOG_ERROR : LOG_INFO, "exit h8819 proc %d", retval);
 
 	return NULL;
 }

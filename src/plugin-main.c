@@ -1,5 +1,5 @@
 /*
-OBS 421921aef Source Plugin
+OBS h8819 Source Plugin
 Copyright (C) 2022 Norihiro Kamae <norihiro@nagater.net>
 
 This program is free software: you can redistribute it and/or modify
