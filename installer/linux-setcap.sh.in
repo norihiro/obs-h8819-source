@@ -1,0 +1,10 @@
+#! /bin/bash
+
+if test "$UID" == "0"; then
+	sudo=''
+else
+	sudo='sudo'
+fi
+
+echo Executing $sudo setcap cap_net_raw=eip "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}/obs-h8819-proc"
+$sudo setcap cap_net_raw=eip "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}/obs-h8819-proc"
