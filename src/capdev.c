@@ -36,6 +36,9 @@ struct capdev_s
 	volatile uint64_t channel_mask;
 	struct source_list_s *sources;
 
+	int packets_received;
+	int packets_missed;
+
 	pid_t pid;
 };
 
@@ -304,6 +307,23 @@ static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t
 	}
 }
 
+static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n)
+{
+	if (n <= 0)
+		return;
+
+	float *buf = bmalloc(sizeof(float) * n);
+	for (int i = 0; i < n; i++)
+		buf[i] = 0.0f;
+
+	float *fltp[N_CHANNELS];
+	for (int i = 0; i < N_CHANNELS; i++)
+		fltp[i] = buf;
+
+	for (struct source_list_s *item = dev->sources; item; item = item->next)
+		source_add_audio(item->src, fltp, n);
+}
+
 static void *thread_main(void *data)
 {
 	os_set_thread_name("h8819");
@@ -375,6 +395,9 @@ static void *thread_main(void *data)
 			ptr[i] = 0.0f;
 
 		pthread_mutex_lock(&dev->mutex);
+		if (header_data.n_skipped_packets)
+			send_blank_audio_to_all_unlocked(dev, header_data.n_skipped_packets * n_samples);
+
 		for (struct source_list_s *item = dev->sources; item; item = item->next) {
 			float *fltp[N_CHANNELS];
 			for (int i = 0; i < N_CHANNELS && item->channels[i] >= 0; i++) {
@@ -385,6 +408,12 @@ static void *thread_main(void *data)
 			source_add_audio(item->src, fltp, n_samples);
 		}
 		pthread_mutex_unlock(&dev->mutex);
+
+		dev->packets_received++;
+		dev->packets_missed += header_data.n_skipped_packets;
+		if (dev->packets_received % 262144 == 0)
+			blog(LOG_INFO, "h8819[%s] current status: %d packets received, %d packets dropped", dev->name,
+			     dev->packets_received, dev->packets_missed);
 	}
 
 	blog(LOG_INFO, "exiting h8819 thread");
@@ -395,6 +424,8 @@ static void *thread_main(void *data)
 	int retval;
 	waitpid(dev->pid, &retval, 0);
 	blog(retval ? LOG_ERROR : LOG_INFO, "exit h8819 proc %d", retval);
+	blog(dev->packets_missed ? LOG_ERROR : LOG_INFO, "h8819[%s]: %d packets received, %d packets dropped",
+	     dev->name, dev->packets_received, dev->packets_missed);
 
 	return NULL;
 }

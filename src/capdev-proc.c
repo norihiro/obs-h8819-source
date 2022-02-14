@@ -24,8 +24,8 @@ struct packet_header_s
 struct context_s
 {
 	struct capdev_proc_request_s req;
-	uint32_t received_packets;
 	uint16_t counter_last;
+	bool got_packet;
 	bool cont;
 };
 
@@ -77,24 +77,16 @@ static void got_msg(const uint8_t *data_packet, size_t bytes, struct context_s *
 		return;
 	header->channel_mask = ctx->req.channel_mask;
 	header->n_data_bytes = 12 * 3 * n_channel;
+	header->n_skipped_packets = 0;
 	uint8_t *pcm24lep = buf + sizeof(struct capdev_proc_header_s);
 
-	// TODO: Just send number of skipped samples and pad them later.
-	if (ctx->received_packets) {
+	if (ctx->got_packet) {
 		uint16_t counter_exp = ctx->counter_last + 1;
 		if (counter_exp != packet_header->l2_counter) {
-			fprintf(stderr, "Error: padding %d packet(s)\n",
-				(int)(packet_header->l2_counter - counter_exp));
-		}
-		while (counter_exp != packet_header->l2_counter) {
-			memset(pcm24lep, 0, header->n_data_bytes);
-			ssize_t written = write(1, buf, sizeof(struct capdev_proc_header_s) + header->n_data_bytes);
-			if (written != sizeof(struct capdev_proc_header_s) + header->n_data_bytes) {
-				fprintf(stderr, "Failed to write\n");
-				ctx->cont = false;
-				return;
-			}
-			counter_exp++;
+			uint16_t skipped = packet_header->l2_counter - counter_exp;
+			header->n_skipped_packets = (int)skipped;
+			fprintf(stderr, "Error: missing packets: counter is %d expected %d\n",
+				(int)packet_header->l2_counter, (int)counter_exp);
 		}
 	}
 
@@ -108,7 +100,7 @@ static void got_msg(const uint8_t *data_packet, size_t bytes, struct context_s *
 	}
 	ctx->counter_last = packet_header->l2_counter;
 
-	ctx->received_packets++;
+	ctx->got_packet = true;
 }
 
 int main(int argc, char **argv)
