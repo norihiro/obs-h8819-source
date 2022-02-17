@@ -3,9 +3,9 @@ variables:
   - name: isReleaseMode
     value: true
   - name: buildWin32
-    value: true
+    value: false
   - name: buildWin64
-    value: true
+    value: false
   - name: OBSLatestTag
     value: 26.1.2
 
