@@ -140,7 +140,8 @@ int main(int argc, char **argv)
 		if (FD_ISSET(0, &readfds)) {
 			size_t bytes = read(0, &ctx.req, sizeof(ctx.req));
 			if (bytes != sizeof(ctx.req)) {
-				fprintf(stderr, "Error: read %d bytes, expected %d bytes.\n", bytes, sizeof(ctx.req));
+				fprintf(stderr, "Error: read %d bytes, expected %d bytes.\n", (int)bytes,
+					(int)sizeof(ctx.req));
 				ctx.cont = false;
 				break;
 			}
