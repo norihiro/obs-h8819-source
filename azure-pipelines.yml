@@ -7,7 +7,7 @@ variables:
   - name: buildWin64
     value: false
   - name: OBSLatestTag
-    value: 26.1.2
+    value: 27.0.1
 
 trigger:
   branches:
