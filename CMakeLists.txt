@@ -32,8 +32,12 @@ include(external/FindLibObs.cmake)
 endif()
 
 find_package(LibObs REQUIRED)
-find_package(PkgConfig)
-pkg_check_modules(LIBPCAP REQUIRED libpcap)
+
+if(UNIX AND NOT APPLE)
+	# macOS does not require it.
+	find_package(PkgConfig)
+	pkg_check_modules(LIBPCAP REQUIRED libpcap)
+endif()
 
 configure_file(
 	src/plugin-macros.h.in
