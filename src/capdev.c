@@ -312,6 +312,13 @@ static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n)
 	if (n <= 0)
 		return;
 
+	// If 2 seconds or more (n >= 96000), libobs starts to add offset, which we should avoid.
+	// TS_SMOOTHING_THRESHOLD (>= 70 ms, n >= 3360) is another threshold to smooth.
+	// If the blank is larger than TS_SMOOTHING_THRESHOLD, let libobs to flush the buffer.
+	// Added ~10% to the threshold to ensure exceeding the threshold.
+	if (n > 3700)
+		return;
+
 	float *buf = bmalloc(sizeof(float) * n);
 	for (int i = 0; i < n; i++)
 		buf[i] = 0.0f;
