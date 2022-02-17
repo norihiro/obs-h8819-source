@@ -322,6 +322,8 @@ static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n)
 
 	for (struct source_list_s *item = dev->sources; item; item = item->next)
 		source_add_audio(item->src, fltp, n);
+
+	bfree(buf);
 }
 
 static void *thread_main(void *data)
