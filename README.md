@@ -18,7 +18,7 @@ To use this plugin, you have to set the sampling frequency of the REAC device to
 ## Disclaimer
 
 This plugin is provided "as is" without warranty of any kind,
-either expressed or implied and the plugin is to be used at your own risk.
+either expressed or implied, and the plugin is to be used at your own risk.
 The author of this plugin has no relationship with Roland.
 Do not ask Roland for support of this plugin.
 
