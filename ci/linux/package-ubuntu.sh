@@ -11,6 +11,7 @@ cd ./build
 
 OBS_VER="$(dpkg -s obs-studio | awk '$1=="Version:"{ gsub(/[^0-9.].*/, "", $2); print $2}')"
 
+cp setcap.sh postinstall-pak
 PAGER="cat" sudo checkinstall -y --type=debian --fstrans=no --nodoc \
 	--backup=no --deldoc=yes --install=no \
 	--pkgname="$PLUGIN_NAME" --pkgversion="$PKG_VERSION" \
