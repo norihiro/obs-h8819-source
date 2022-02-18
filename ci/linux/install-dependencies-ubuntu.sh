@@ -15,6 +15,7 @@ sudo apt-get install -y \
 	libpcap-dev
 
 # Dirty hack
-sudo wget -O /usr/include/obs/obs-frontend-api.h https://raw.githubusercontent.com/obsproject/obs-studio/25.0.0/UI/obs-frontend-api/obs-frontend-api.h
+OBS_VER="$(dpkg -s obs-studio | awk '$1=="Version:"{ gsub(/[^0-9.].*/, "", $2); print $2}')"
+sudo wget -O /usr/include/obs/obs-frontend-api.h https://raw.githubusercontent.com/obsproject/obs-studio/${OBS_VER}/UI/obs-frontend-api/obs-frontend-api.h
 
 sudo ldconfig

@@ -9,7 +9,7 @@ export PKG_VERSION="1-$(git describe --tags --always)"
 
 cd ./build
 
-OBS_VER="$(dpkg -s obs-studio | awk '$1=="Version:"{print gensub(/^([0-9]*\.[0-9]*)\..*/, "\\1.0", "g", $2)}')"
+OBS_VER="$(dpkg -s obs-studio | awk '$1=="Version:"{ gsub(/[^0-9.].*/, "", $2); print $2}')"
 
 PAGER="cat" sudo checkinstall -y --type=debian --fstrans=no --nodoc \
 	--backup=no --deldoc=yes --install=no \
