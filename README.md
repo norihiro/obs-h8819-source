@@ -32,4 +32,5 @@ Specify left and right channel to be captured.
 
 ## See also
 
-- [reacdriver](https://github.com/per-gron/reacdriver)
+- [reacdriver](https://github.com/per-gron/reacdriver) - The format of the packet was taken from this implementation.
+- [reaccapture](https://github.com/norihiro/reaccapture) - Standalone implementation to convert the packet to wave file.
