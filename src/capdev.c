@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <sys/wait.h>
+#include <inttypes.h>
 #include <obs-module.h>
 #include "util/threading.h"
 #include "plugin-macros.generated.h"
@@ -348,7 +349,7 @@ static void *thread_main(void *data)
 	while (dev->refcnt > -1) {
 		if (dev->channel_mask != req.channel_mask) {
 			req.channel_mask = dev->channel_mask;
-			blog(LOG_INFO, "requesting channel_mask=%llx", req.channel_mask);
+			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
 			write(fd_req, &req, sizeof(req));
 		}
 
