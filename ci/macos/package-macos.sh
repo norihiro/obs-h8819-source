@@ -52,7 +52,7 @@ install_name_tool \
 copy_local_dylib ./build/${PLUGIN_NAME}.so
 
 # Check if replacement worked
-for dylib in ./build/$PLUGIN_NAME.so lib/*.dylib ; do
+for dylib in ./build/$PLUGIN_NAME.so ./build/obs-h8819-proc lib/*.dylib ; do
 	test -f "$dylib" || continue
 	chmod +r $dylib
 	echo "=> Dependencies for $(basename $dylib)"
@@ -75,6 +75,7 @@ mkdir -p $ziproot/bin
 cp ./build/$PLUGIN_NAME.so $ziproot/bin/
 cp LICENSE data/LICENSE-$PLUGIN_NAME
 cp -a data $ziproot/
+cp -a ./build/obs-h8819-proc $ziproot/data/
 mkdir -p ./release
 rmdir lib || mv lib $ziproot/
 (cd package-zip && zip -r ../release/$zipfile $PLUGIN_NAME)
