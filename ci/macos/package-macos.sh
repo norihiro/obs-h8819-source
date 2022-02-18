@@ -52,7 +52,7 @@ install_name_tool \
 copy_local_dylib ./build/${PLUGIN_NAME}.so
 
 # Check if replacement worked
-for dylib in ./build/$PLUGIN_NAME.so ./build/obs-h8819-proc lib/*.dylib ; do
+for dylib in ./build/$PLUGIN_NAME.so lib/*.dylib ; do
 	test -f "$dylib" || continue
 	chmod +r $dylib
 	echo "=> Dependencies for $(basename $dylib)"
@@ -65,6 +65,13 @@ for dylib in ./build/$PLUGIN_NAME.so ./build/obs-h8819-proc lib/*.dylib ; do
 		echo "=> Skipped plugin codesigning since RELEASE_MODE=$RELEASE_MODE"
 	fi
 done
+
+echo "=> Dependencies for obs-h8819-proc"
+otool -L ./build/obs-h8819-proc
+if [[ "$RELEASE_MODE" == "True" ]]; then
+	echo "=> Signing plugin binary: obs-h8819-proc"
+	codesign --force --options runtime --sign "$CODE_SIGNING_IDENTITY" ./build/obs-h8819-proc
+fi
 
 echo "=> ZIP package build"
 ziproot=package-zip/$PLUGIN_NAME
