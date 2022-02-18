@@ -30,6 +30,17 @@ Specifies which ethernet device to be monitored.
 ### Channel L / R
 Specify left and right channel to be captured.
 
+## Build
+Use cmake to build on Linux. After checkout, run these commands.
+```
+sed -i 's;${CMAKE_INSTALL_FULL_LIBDIR};/usr/lib;' CMakeLists.txt
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+make
+sudo make install
+```
+During install, `setcap` will be called to enable packet capture.
+
 ## See also
 
 - [reacdriver](https://github.com/per-gron/reacdriver) - The format of the packet was taken from this implementation.
