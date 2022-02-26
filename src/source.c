@@ -75,6 +75,15 @@ static void update(void *data, obs_data_t *settings)
 	int channel_l = obs_data_get_int(settings, "channel_l") - 1;
 	int channel_r = obs_data_get_int(settings, "channel_r") - 1;
 
+	if (channel_l < 0)
+		channel_l = 0;
+	if (channel_l >= 40)
+		channel_l = 40 - 1;
+	if (channel_r < 0)
+		channel_r = 0;
+	if (channel_r >= 40)
+		channel_r = 40 - 1;
+
 	if (device_name && (!s->device_name || strcmp(device_name, s->device_name)))
 		update_device(s, device_name, channel_l, channel_r);
 
