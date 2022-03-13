@@ -22,6 +22,15 @@ either expressed or implied, and the plugin is to be used at your own risk.
 The author of this plugin has no relationship with Roland.
 Do not ask Roland for support of this plugin.
 
+## Prerequisite
+
+This plugin is developed for hardware supporting REAC.
+In addition to your PC running OBS, you need to have
+- Dedicated Ethernet adapter on your PC for REAC connection.
+  You should not share your LAN with REAC. That means two ethernet ports are required for streaming.
+- REAC supported device.
+  Currently only M-200i is tested with this plugin.
+
 ## Configuring as a global audio device
 
 The source type of the global audio devices is hard-coded in OBS Studio.
