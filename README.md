@@ -22,6 +22,75 @@ either expressed or implied, and the plugin is to be used at your own risk.
 The author of this plugin has no relationship with Roland.
 Do not ask Roland for support of this plugin.
 
+## Configuring as a global audio device
+
+The source type of the global audio devices is hard-coded in OBS Studio.
+You have to edit your scene collection file.
+
+Instruction below is made for Linux.
+For macOS user, replace `~/.config/obs-studio/` with `~/Library/Application Support/obs-studio/`.
+
+Before start editing, add a default audio source on OBS Studio and exit OBS Studio.
+
+At first, find your scene collection file and format it to be edited easily.
+Below is an example. If you have changed your scene collection name, the file name will differ.
+At the same time, take a backup file `scene-backup.json`.
+```
+python3 -mjson.tool ~/.config/obs-studio/basic/scenes/Untitled.json > scene.json
+cp scene.json scene-backup.json
+```
+
+Then, open the file `scene.json` by your editor and find an entry named `AuxAudioDevice1`.
+Edit `id`, `settings`, `versioned_id` as below (`+` indicates a new line, `-` indicates a removed line).
+```patch
+     "AuxAudioDevice1": {
+         "balance": 0.5,
+         "deinterlace_field_order": 0,
+         "deinterlace_mode": 0,
+         "enabled": true,
+         "flags": 0,
+         "hotkeys": {
+             "libobs.mute": [],
+             "libobs.push-to-mute": [],
+             "libobs.push-to-talk": [],
+             "libobs.unmute": []
+         },
+-        "id": "pulse_input_capture",
++        "id": "net.nagater.obs-h8819-source.source",
+         "mixers": 255,
+         "monitoring_type": 0,
+         "muted": false,
+         "name": "Mic/Aux",
+         "prev_ver": 453115907,
+         "private_settings": {},
+         "push-to-mute": false,
+         "push-to-mute-delay": 0,
+         "push-to-talk": false,
+         "push-to-talk-delay": 0,
+         "settings": {
+-            "device_id": "default"
++            "channel_l": 7,
++            "channel_r": 8,
++            "device_name": "enp12s0"
+         },
+         "sync": 0,
+-        "versioned_id": "pulse_input_capture",
++        "versioned_id": "net.nagater.obs-h8819-source.source",
+         "volume": 1.0
+     },
+```
+You might need to adjust `device_name` depending on your hardware configuration.
+
+Finally, apply your change.
+```
+cp scene.json ~/.config/obs-studio/basic/scenes/Untitled.json
+```
+
+Just in case something went wrong, revert to your backu.
+```
+cp scene-backup.json ~/.config/obs-studio/basic/scenes/Untitled.json
+```
+
 ## Properties
 
 ### Ethernet device
