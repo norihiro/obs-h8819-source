@@ -2,7 +2,7 @@
 #include <sys/wait.h>
 #include <inttypes.h>
 #include <obs-module.h>
-#include "util/threading.h"
+#include <util/threading.h>
 #include "plugin-macros.generated.h"
 #include "source.h"
 #include "capdev.h"
