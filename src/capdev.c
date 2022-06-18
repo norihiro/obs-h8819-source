@@ -169,7 +169,10 @@ void capdev_link_source(capdev_t *dev, source_t *src, const int *channels)
 	item->next = dev->sources;
 	item->prev_next = &dev->sources;
 	dev->sources = item;
+	if (item->next)
+		item->next->prev_next = &item->next;
 	dev->channel_mask |= item->channel_mask;
+
 	pthread_mutex_unlock(&dev->mutex);
 }
 
