@@ -80,6 +80,8 @@ static void capdev_remove_from_devices_unlocked(capdev_t *dev)
 {
 	if (dev && dev->prev_next) {
 		*dev->prev_next = dev->next;
+		if (dev->next)
+			dev->next->prev_next = dev->prev_next;
 		dev->prev_next = NULL;
 		dev->next = NULL;
 	}
