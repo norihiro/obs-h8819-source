@@ -143,6 +143,7 @@ static void capdev_destroy(capdev_t *dev)
 		blog(LOG_ERROR, "capdev_destroy: sources are remaining");
 	pthread_mutex_destroy(&dev->mutex);
 
+	bfree(dev->name);
 	bfree(dev);
 }
 

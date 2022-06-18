@@ -110,6 +110,7 @@ static void destroy(void *data)
 		capdev_release(s->capdev);
 	}
 
+	bfree(s->device_name);
 	bfree(s);
 }
 
