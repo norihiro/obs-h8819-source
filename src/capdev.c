@@ -245,6 +245,8 @@ bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 		return false;
 	}
 
+	char *proc_path = obs_module_file(PROC_4219);
+
 	// TODO: consider using vfork
 	pid_t pid = fork();
 	if (pid < 0) {
@@ -253,6 +255,7 @@ bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 		close(pipe_req[1]);
 		close(pipe_data[0]);
 		close(pipe_data[1]);
+		bfree(proc_path);
 		return false;
 	}
 
@@ -264,7 +267,6 @@ bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 		close(pipe_req[1]);
 		close(pipe_data[0]);
 		close(pipe_data[1]);
-		char *proc_path = obs_module_file(PROC_4219);
 		if (execlp(proc_path, PROC_4219, dev->name, NULL) < 0) {
 			fprintf(stderr, "Error: failed to exec \"%s\"\n", proc_path);
 			close(0);
@@ -276,6 +278,8 @@ bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 	*fd_req = pipe_req[1];
 	*fd_data = pipe_data[0];
 	dev->pid = pid;
+
+	bfree(proc_path);
 
 	return true;
 }
