@@ -1,0 +1,32 @@
+name: Translation
+
+on:
+  push:
+    branches:
+      - main
+      - crowdin-automation
+
+jobs:
+  synchronize-with-crowdin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare source file
+        run: |
+          mkdir crowdin-work
+          cp data/locale/en-US.ini crowdin-work/${{ github.event.repository.name }}.ini
+          sed -e 's;%repository.name%;${{ github.event.repository.name }};g' < .github/files/crowdin-template.yml > crowdin.yml
+
+      - name: Crowdin action
+        uses: norihiro/crowdin-github-action@caed32546f892c96e3637425eac5a187052f8b9c
+        with:
+          upload_translations: true
+          download_translations: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+          INPUT_DOWNLOAD_TRANSLATIONS_ARGS: -s crowdin-work/${{ github.event.repository.name }}.ini
+
