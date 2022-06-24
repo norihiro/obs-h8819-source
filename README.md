@@ -5,7 +5,7 @@
 This plugin provides audio source(s) from REAC, which is an audio-over-ethernet protocol developed by Roland.
 
 Why h8819... This plugin captures packets whose EtherType is 0x8819.
-An initial `h` is added to express that it was made by the company at Hamamatsu, Japan.
+An initial `h` is added to express that the hardware was made by the company at Hamamatsu, Japan.
 
 ## Tested device
 
@@ -95,7 +95,7 @@ Finally, apply your change.
 cp scene.json ~/.config/obs-studio/basic/scenes/Untitled.json
 ```
 
-Just in case something went wrong, revert to your backu.
+Just in case something went wrong, revert to your backup.
 ```
 cp scene-backup.json ~/.config/obs-studio/basic/scenes/Untitled.json
 ```
@@ -111,8 +111,11 @@ ifconfig -a
 ```
 Then, choose your ethernet device. Usually it is named such as `enp2s0` or `en1`.
 
+For macOS user, replace `en` with `bpf`. For example, the device name should be `bpf1` to capture `en1`.
+
 ### Channel L / R
 Specify left and right channel to be captured.
+Available range is 1 to 40.
 
 ## Build and install
 ### Linux
