@@ -117,7 +117,12 @@ int main(int argc, char **argv)
 
 	pcap_set_buffer_size(p, 524288 * 4);
 
-	pcap_activate(p);
+	int ret = pcap_activate(p);
+	if (ret) {
+		fprintf(stderr, "Error: pcap_activate failed %s\n", pcap_geterr(p));
+		return 1;
+	}
+
 	int fd_pcap = pcap_get_selectable_fd(p);
 
 	struct context_s ctx = {0};
