@@ -15,6 +15,9 @@ static capdev_t *devices = NULL;
 #define N_CHANNELS 40
 #define PROC_4219 "obs-h8819-proc"
 
+#define N_IGNORE_FIRST_PACKET 1024
+#define K_OFFSET_DECAY (256 * 16)
+
 struct source_list_s
 {
 	source_t *src;
@@ -37,6 +40,8 @@ struct capdev_s
 	pthread_t thread;
 	volatile uint64_t channel_mask;
 	struct source_list_s *sources;
+
+	int64_t ts_offset;
 
 	int packets_received;
 	int packets_missed;
@@ -352,6 +357,28 @@ static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n, uint64
 	bfree(buf);
 }
 
+static int64_t estimate_timestamp(struct capdev_s *dev, const struct capdev_proc_header_s *pkt, int n_samples)
+{
+	int64_t ts_obs = (int64_t)os_gettime_ns() - sample_time(n_samples);
+	if (dev->packets_received == 0 || pkt->timestamp + dev->ts_offset >= ts_obs ||
+	    pkt->timestamp + dev->ts_offset + 70000000 < ts_obs) {
+		dev->ts_offset = ts_obs - (int64_t)pkt->timestamp;
+	}
+	else {
+		int64_t e = ts_obs - (int64_t)pkt->timestamp - dev->ts_offset;
+		dev->ts_offset += e / K_OFFSET_DECAY;
+	}
+
+	int64_t ts = pkt->timestamp + dev->ts_offset;
+
+#if 0
+	blog(LOG_INFO, "timestamp: obs: %0.6f pcap: %0.6f ts_offset: %0.6f timestamp: %0.6f", ts_obs * 1e-9,
+			pkt->timestamp * 1e-9, dev->ts_offset * 1e-9, ts * 1e-9);
+#endif
+
+	return ts;
+}
+
 static void *thread_main(void *data)
 {
 	os_set_thread_name("h8819");
@@ -422,22 +449,25 @@ static void *thread_main(void *data)
 		for (int i = 0; i < n_samples; i++)
 			ptr[i] = 0.0f;
 
-		uint64_t timestamp = os_gettime_ns() - sample_time(n_samples);
+		int64_t timestamp = estimate_timestamp(dev, &header_data, n_samples);
 
-		pthread_mutex_lock(&dev->mutex);
-		if (header_data.n_skipped_packets)
-			send_blank_audio_to_all_unlocked(dev, header_data.n_skipped_packets * n_samples, timestamp);
+		if (dev->packets_received >= N_IGNORE_FIRST_PACKET) {
+			pthread_mutex_lock(&dev->mutex);
+			if (header_data.n_skipped_packets)
+				send_blank_audio_to_all_unlocked(dev, header_data.n_skipped_packets * n_samples,
+								 timestamp);
 
-		for (struct source_list_s *item = dev->sources; item; item = item->next) {
-			float *fltp[N_CHANNELS];
-			for (int i = 0; i < N_CHANNELS && item->channels[i] >= 0; i++) {
-				float *p = fltp_all[item->channels[i]];
-				fltp[i] = p ? p : ptr;
+			for (struct source_list_s *item = dev->sources; item; item = item->next) {
+				float *fltp[N_CHANNELS];
+				for (int i = 0; i < N_CHANNELS && item->channels[i] >= 0; i++) {
+					float *p = fltp_all[item->channels[i]];
+					fltp[i] = p ? p : ptr;
+				}
+
+				source_add_audio(item->src, fltp, n_samples, timestamp);
 			}
-
-			source_add_audio(item->src, fltp, n_samples, timestamp);
+			pthread_mutex_unlock(&dev->mutex);
 		}
-		pthread_mutex_unlock(&dev->mutex);
 
 		dev->packets_received++;
 		dev->packets_missed += header_data.n_skipped_packets;
