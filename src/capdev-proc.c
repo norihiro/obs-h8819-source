@@ -52,9 +52,14 @@ static inline void convert_to_pcm24lep(uint8_t *dptr, const uint8_t *sptr, uint6
 	}
 }
 
-static void got_msg(const uint8_t *data_packet, size_t bytes, struct context_s *ctx)
+static uint64_t ts_pcap_to_obs(const struct pcap_pkthdr *pktheader)
 {
-	if (bytes < sizeof(struct packet_header_s) + 2)
+	return pktheader->ts.tv_sec * 1000000000ULL + pktheader->ts.tv_usec * 1000ULL;
+}
+
+static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pktheader, struct context_s *ctx)
+{
+	if (pktheader->caplen < sizeof(struct packet_header_s) + 2)
 		return;
 	const struct packet_header_s *packet_header = (const void *)data_packet;
 
@@ -64,9 +69,9 @@ static void got_msg(const uint8_t *data_packet, size_t bytes, struct context_s *
 
 	// TODO: Check destination is broadcast address.
 
-	if (data_packet[bytes - 2] != 0xC2 || data_packet[bytes - 1] != 0xEA) {
-		fprintf(stderr, "Error: ending word failed: %02X %02X\n", (int)data_packet[bytes - 2],
-			(int)data_packet[bytes - 1]);
+	if (data_packet[pktheader->caplen - 2] != 0xC2 || data_packet[pktheader->caplen - 1] != 0xEA) {
+		fprintf(stderr, "Error: ending word failed: %02X %02X\n", (int)data_packet[pktheader->caplen - 2],
+			(int)data_packet[pktheader->caplen - 1]);
 		return;
 	}
 
@@ -76,6 +81,7 @@ static void got_msg(const uint8_t *data_packet, size_t bytes, struct context_s *
 	if (n_channel < 0 || 40 < n_channel)
 		return;
 	header->channel_mask = ctx->req.channel_mask;
+	header->timestamp = ts_pcap_to_obs(pktheader);
 	header->n_data_bytes = 12 * 3 * n_channel;
 	header->n_skipped_packets = 0;
 	uint8_t *pcm24lep = buf + sizeof(struct capdev_proc_header_s);
@@ -170,7 +176,7 @@ int main(int argc, char **argv)
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
 			if (pcap_next_ex(p, &header, &payload))
-				got_msg(payload, header->caplen, &ctx);
+				got_msg(payload, header, &ctx);
 		}
 	}
 
