@@ -120,6 +120,8 @@ static capdev_t *capdev_create_unlocked(const char *device_name)
 	dev->name = bstrdup(device_name);
 	dev->next = devices;
 	dev->prev_next = &devices;
+	if (dev->next)
+		dev->next->prev_next = &dev->next;
 	devices = dev;
 
 	// main construction code
