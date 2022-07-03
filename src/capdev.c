@@ -2,6 +2,7 @@
 #include <sys/wait.h>
 #include <inttypes.h>
 #include <obs-module.h>
+#include <util/platform.h>
 #include <util/threading.h>
 #include "plugin-macros.generated.h"
 #include "source.h"
@@ -320,7 +321,12 @@ static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t
 	}
 }
 
-static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n)
+static inline int64_t sample_time(int n_samples)
+{
+	return n_samples * 62500 / 3; // * 1000000000 / 48000
+}
+
+static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n, uint64_t timestamp)
 {
 	if (n <= 0)
 		return;
@@ -341,7 +347,7 @@ static void send_blank_audio_to_all_unlocked(struct capdev_s *dev, int n)
 		fltp[i] = buf;
 
 	for (struct source_list_s *item = dev->sources; item; item = item->next)
-		source_add_audio(item->src, fltp, n);
+		source_add_audio(item->src, fltp, n, timestamp - sample_time(n));
 
 	bfree(buf);
 }
@@ -416,9 +422,11 @@ static void *thread_main(void *data)
 		for (int i = 0; i < n_samples; i++)
 			ptr[i] = 0.0f;
 
+		uint64_t timestamp = os_gettime_ns() - sample_time(n_samples);
+
 		pthread_mutex_lock(&dev->mutex);
 		if (header_data.n_skipped_packets)
-			send_blank_audio_to_all_unlocked(dev, header_data.n_skipped_packets * n_samples);
+			send_blank_audio_to_all_unlocked(dev, header_data.n_skipped_packets * n_samples, timestamp);
 
 		for (struct source_list_s *item = dev->sources; item; item = item->next) {
 			float *fltp[N_CHANNELS];
@@ -427,7 +435,7 @@ static void *thread_main(void *data)
 				fltp[i] = p ? p : ptr;
 			}
 
-			source_add_audio(item->src, fltp, n_samples);
+			source_add_audio(item->src, fltp, n_samples, timestamp);
 		}
 		pthread_mutex_unlock(&dev->mutex);
 

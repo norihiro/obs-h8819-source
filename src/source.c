@@ -1,5 +1,4 @@
 #include <obs-module.h>
-#include <util/platform.h>
 #include "plugin-macros.generated.h"
 #include "source.h"
 #include "capdev.h"
@@ -114,14 +113,14 @@ static void destroy(void *data)
 	bfree(s);
 }
 
-void source_add_audio(source_t *s, float **data, int n_samples)
+void source_add_audio(source_t *s, float **data, int n_samples, uint64_t timestamp)
 {
 	struct obs_source_audio out = {
 		.speakers = 2,
 		.samples_per_sec = 48000, // TODO: retrieve from the packet
 		.format = AUDIO_FORMAT_FLOAT_PLANAR,
 		.frames = n_samples,
-		.timestamp = os_gettime_ns() - n_samples * 62500 / 3, // * 1000000000 / 48000
+		.timestamp = timestamp,
 	};
 	for (int i = 0; i < 2; i++)
 		out.data[i] = (void *)data[i];
