@@ -440,6 +440,11 @@ static void *thread_main(void *data)
 
 	blog(LOG_INFO, "exiting h8819 thread");
 
+	if (fd_req >= 0) {
+		req.flags |= CAPDEV_REQ_FLAG_EXIT;
+		write(fd_req, &req, sizeof(req));
+	}
+
 	close(fd_req);
 	close(fd_data);
 
