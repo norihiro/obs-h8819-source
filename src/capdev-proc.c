@@ -174,5 +174,7 @@ int main(int argc, char **argv)
 		}
 	}
 
+	pcap_close(p);
+
 	return 0;
 }
