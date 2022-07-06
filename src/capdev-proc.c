@@ -141,6 +141,10 @@ int main(int argc, char **argv)
 
 		struct timeval timeout = {.tv_sec = 0, .tv_usec = fd_pcap >= 0 ? 50000 : 500};
 		int ret = select(nfds, &readfds, NULL, &exceptfds, &timeout);
+		if (ret < 0) {
+			perror("select");
+			ctx.cont = false;
+		}
 
 		if (FD_ISSET(0, &readfds)) {
 			size_t bytes = read(0, &ctx.req, sizeof(ctx.req));
