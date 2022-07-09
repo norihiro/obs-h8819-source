@@ -121,7 +121,13 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	pcap_set_buffer_size(p, 524288 * 4);
+	// Immediate mode caused packet losses.
+	// Trying timeout less than the smoothing threshold in libobs (70 ms).
+	pcap_set_timeout(p, 44 /*[ms]*/);
+
+	// 44 ms x 48 kHz x 40 ch x 3 byte/ch = 254 kbytes
+	// Allocate twice for the slave device, another twice for more safety.
+	pcap_set_buffer_size(p, 4 * 256 * 1024);
 
 	int ret = pcap_activate(p);
 	if (ret) {
