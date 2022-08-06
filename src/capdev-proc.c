@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	pcap_t *p = pcap_create(if_name, errbuf);
 
 	if (!p) {
-		fputs(errbuf, stderr);
+		fprintf(stderr, "%s\n", errbuf);
 		return 1;
 	}
 
