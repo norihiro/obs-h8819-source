@@ -168,6 +168,7 @@ jobs:
           . ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
           (cd release/${PLUGIN_NAME} && ../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ bin/${PLUGIN_NAME}.so)
+          cp build/obs-h8819-proc release/${PLUGIN_NAME}/data/
           cp LICENSE release/${PLUGIN_NAME}/data/LICENSE-$PLUGIN_NAME
 
       - name: Codesign
@@ -182,6 +183,7 @@ jobs:
             test -f "$dylib" || continue
             codesign --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" "$dylib"
           done
+          codesign --force --options runtime --sign "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" release/${PLUGIN_NAME}/data/obs-h8819-proc
 
       - name: Package
         run: |
