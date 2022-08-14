@@ -111,8 +111,6 @@ ifconfig -a
 ```
 Then, choose your ethernet device. Usually it is named such as `enp2s0` or `en1`.
 
-For macOS user, replace `en` with `bpf`. For example, the device name should be `bpf1` to capture `en1`.
-
 ### Channel L / R
 Specify left and right channel to be captured.
 Available range is 1 to 40.
