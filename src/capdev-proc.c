@@ -135,6 +135,17 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	struct bpf_program fp = {0};
+	ret = pcap_compile(p, &fp, "ether proto 0x8819", 1, PCAP_NETMASK_UNKNOWN);
+	if (ret) {
+		fprintf(stderr, "Warning: pcap_compile: %s\n", pcap_geterr(p));
+	}
+	else {
+		ret = pcap_setfilter(p, &fp);
+		if (ret)
+			fprintf(stderr, "Error: pcap_setfilter: %s\n", pcap_geterr(p));
+	}
+
 	int fd_pcap = pcap_get_selectable_fd(p);
 
 	struct context_s ctx = {0};
