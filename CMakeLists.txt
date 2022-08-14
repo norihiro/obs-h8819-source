@@ -18,6 +18,13 @@ set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 # TAKE NOTE: No need to edit things past this point
 
+option(LINUX_DEB_PKG "Make deb package for Linux" ON)
+if(LINUX_DEB_PKG)
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS libcap2-bin)
+	set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA ${CMAKE_CURRENT_BINARY_DIR}/postinst)
+	configure_file(installer/linux-setcap.sh.in postinst)
+endif()
+
 find_package(libobs REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
 
@@ -81,7 +88,6 @@ if(OS_LINUX)
 	install(TARGETS obs-h8819-proc
 		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
 
-	configure_file(installer/linux-setcap.sh.in setcap.sh)
 	install(CODE "execute_process(COMMAND ./setcap.sh)")
 endif()
 
