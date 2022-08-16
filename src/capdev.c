@@ -395,7 +395,11 @@ static void *thread_main(void *data)
 		if (dev->channel_mask != req.channel_mask) {
 			req.channel_mask = dev->channel_mask;
 			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
-			write(fd_req, &req, sizeof(req));
+			ssize_t ret = write(fd_req, &req, sizeof(req));
+			if (ret != sizeof(req)) {
+				blog(LOG_ERROR, "write returns %d.", (int)ret);
+				break;
+			}
 		}
 
 		fd_set readfds;
@@ -479,7 +483,10 @@ static void *thread_main(void *data)
 
 	if (fd_req >= 0) {
 		req.flags |= CAPDEV_REQ_FLAG_EXIT;
-		write(fd_req, &req, sizeof(req));
+		ssize_t ret = write(fd_req, &req, sizeof(req));
+		if (ret != sizeof(req)) {
+			blog(LOG_ERROR, "write returns %d.", (int)ret);
+		}
 	}
 
 	close(fd_req);
