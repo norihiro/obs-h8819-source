@@ -236,7 +236,7 @@ void capdev_unlink_source(capdev_t *dev, source_t *src)
 	pthread_mutex_unlock(&dev->mutex);
 }
 
-bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
+static bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 {
 	int pipe_req[2];
 	int pipe_data[2];
