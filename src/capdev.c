@@ -408,7 +408,6 @@ static void *thread_main(void *data)
 			continue;
 
 		struct capdev_proc_header_s header_data;
-		struct data_info_s info;
 		ssize_t ret = read(fd_data, &header_data, sizeof(header_data));
 		if (ret != sizeof(header_data)) {
 			blog(LOG_ERROR, "capdev thread_main: read returns %d.", (int)ret);
@@ -417,7 +416,7 @@ static void *thread_main(void *data)
 
 		uint8_t buf[1500];
 		float fltp_buf[500];
-		if (header_data.n_data_bytes > sizeof(buf)) {
+		if (header_data.n_data_bytes > (int)sizeof(buf)) {
 			blog(LOG_ERROR, "header_data.n_data_bytes = %d is too large.", header_data.n_data_bytes);
 			break;
 		}

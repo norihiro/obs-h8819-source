@@ -52,9 +52,9 @@ static inline void convert_to_pcm24lep(uint8_t *dptr, const uint8_t *sptr, uint6
 	}
 }
 
-static uint64_t ts_pcap_to_obs(const struct pcap_pkthdr *pktheader)
+static int64_t ts_pcap_to_obs(const struct pcap_pkthdr *pktheader)
 {
-	return pktheader->ts.tv_sec * 1000000000ULL + pktheader->ts.tv_usec * 1000ULL;
+	return pktheader->ts.tv_sec * 1000000000LL + pktheader->ts.tv_usec * 1000LL;
 }
 
 static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pktheader, struct context_s *ctx)
