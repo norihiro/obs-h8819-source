@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 
 project(obs-h8819-source VERSION 0.2.1)
 
@@ -69,9 +69,9 @@ add_executable(obs-h8819-proc
 	src/capdev-proc.h
 )
 
-target_link_libraries(obs-h8819-proc
-	pcap
-)
+if(NOT OS_WINDOWS)
+	target_link_libraries(obs-h8819-proc pcap)
+endif()
 
 if(OS_WINDOWS)
 	# Enable Multicore Builds and disable FH4 (to not depend on VCRUNTIME140_1.DLL when building with VS2019)
@@ -80,6 +80,10 @@ if(OS_WINDOWS)
 	endif()
 
 	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)
+
+	target_include_directories(obs-h8819-proc PRIVATE ${NPCAP_INCLUDE_DIR})
+	target_link_directories(obs-h8819-proc PRIVATE ${NPCAP_LIBRARY_DIR})
+	target_link_libraries(obs-h8819-proc ${NPCAP_LIBRARIES})
 endif()
 
 if(OS_LINUX)

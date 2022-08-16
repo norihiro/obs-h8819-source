@@ -284,6 +284,10 @@ jobs:
         with:
           obs: ${{ matrix.obs }}
 
+      - name: Prepare Npcap
+        shell: bash
+        run: ci/windows/install-npcap.sh
+
       - name: Build plugin
         run: |
           $CmakeArgs = @(
@@ -292,6 +296,9 @@ jobs:
             '-DCMAKE_SYSTEM_VERSION=10.0.18363.657'
             "-DCMAKE_INSTALL_PREFIX=$(Resolve-Path -Path "./obs-build-dependencies/plugin-deps-${{ matrix.arch }}")"
             "-DCMAKE_PREFIX_PATH=$(Resolve-Path -Path "./obs-build-dependencies/plugin-deps-${{ matrix.arch }}")"
+            '-DNPCAP_INCLUDE_DIR=${{ env.NPCAP_INCLUDE_DIR }}'
+            '-DNPCAP_LIBRARY_DIR=${{ env.NPCAP_LIBRARY_DIR }}'
+            '-DNPCAP_LIBRARIES=${{ env.NPCAP_LIBRARIES }}'
           )
           cmake -S . -B build @CmakeArgs
           cmake --build build --config RelWithDebInfo -j 4
