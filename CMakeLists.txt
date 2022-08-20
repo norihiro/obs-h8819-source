@@ -88,6 +88,7 @@ if(OS_LINUX)
 	install(TARGETS obs-h8819-proc
 		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
 
+	configure_file(installer/linux-setcap.sh.in setcap.sh)
 	install(CODE "execute_process(COMMAND ./setcap.sh)")
 endif()
 
