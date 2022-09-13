@@ -2,10 +2,137 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <unistd.h>
+#include "plugin-macros.generated.h"
 #include <pcap.h>
+#ifndef OS_WINDOWS
+#include <unistd.h>
+#else
+#include <windows.h>
+#endif
 #include "capdev-proc.h"
 #include "common.h"
+
+#ifndef OS_WINDOWS
+struct cp_fds_s
+{
+	int fd_pcap;
+	fd_set readfds;
+	fd_set exceptfds;
+};
+
+static void cp_fds_init(struct cp_fds_s *ctx, pcap_t *p)
+{
+	ctx->fd_pcap = pcap_get_selectable_fd(p);
+	FD_ZERO(&ctx->readfds);
+	FD_ZERO(&ctx->exceptfds);
+}
+
+static bool cp_fds_select(struct cp_fds_s *ctx)
+{
+	int nfds = 1;
+	if (ctx->fd_pcap + 1 > nfds)
+		nfds = ctx->fd_pcap + 1;
+
+	FD_SET(0, &ctx->readfds);
+	FD_SET(0, &ctx->exceptfds);
+	if (ctx->fd_pcap >= 0)
+		FD_SET(ctx->fd_pcap, &ctx->readfds);
+
+	struct timeval timeout = {.tv_sec = 0, .tv_usec = ctx->fd_pcap >= 0 ? 50000 : 500};
+	int ret = select(nfds, &ctx->readfds, NULL, &ctx->exceptfds, &timeout);
+	if (ret < 0) {
+		perror("select");
+		return false;
+	}
+
+	if (FD_ISSET(0, &ctx->exceptfds)) {
+		fputs("0 appears on exceptfds. Exiting...\n", stderr);
+		return false;
+	}
+
+	return true;
+}
+
+static inline bool cp_fds_control_available(struct cp_fds_s *ctx)
+{
+	return FD_ISSET(0, &ctx->readfds);
+}
+
+static inline bool cp_fds_pcap_available(struct cp_fds_s *ctx)
+{
+	if (ctx->fd_pcap < 0)
+		return true;
+	return FD_ISSET(ctx->fd_pcap, &ctx->readfds);
+}
+
+static int cp_fds_read_control(struct cp_fds_s *ctx, void *data, size_t size)
+{
+	return (int)read(0, data, size);
+}
+
+static int cp_fds_write_data(struct cp_fds_s *ctx, const void *data, size_t size)
+{
+	return (int)write(1, data, size);
+}
+
+#else // OS_WINDOWS
+
+struct cp_fds_s
+{
+	HANDLE handles[2];
+	HANDLE hStdOut;
+	DWORD retWait;
+};
+
+static void cp_fds_init(struct cp_fds_s *ctx, pcap_t *p)
+{
+	ctx->handles[0] = GetStdHandle(STD_INPUT_HANDLE);
+	ctx->handles[1] = pcap_getevent(p);
+	ctx->hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+}
+
+static bool cp_fds_select(struct cp_fds_s *ctx)
+{
+	ctx->retWait = WaitForMultipleObjects(2, ctx->handles, FALSE, 70);
+	switch (ctx->retWait) {
+	case WAIT_OBJECT_0:
+	case WAIT_OBJECT_0 + 1:
+		return true;
+	case WAIT_TIMEOUT:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static inline bool cp_fds_control_available(struct cp_fds_s *ctx)
+{
+	return ctx->retWait == 0;
+}
+
+static inline bool cp_fds_pcap_available(struct cp_fds_s *ctx)
+{
+	return ctx->retWait == 1;
+}
+
+static int cp_fds_read_control(struct cp_fds_s *ctx, void *data, size_t size)
+{
+	DWORD bytes_read = 0;
+	bool success = !!ReadFile(ctx->handles[0], data, (DWORD)size, &bytes_read, NULL);
+	if (success && bytes_read)
+		return (int)bytes_read;
+	return -1;
+}
+
+static int cp_fds_write_data(struct cp_fds_s *ctx, const void *data, size_t size)
+{
+	DWORD bytes_written = 0;
+	bool success = !!WriteFile(ctx->hStdOut, data, (DWORD)size, &bytes_written, NULL);
+	if (success && bytes_written)
+		return (int)bytes_written;
+	return -1;
+}
+#endif
 
 #define ETHER_HEADER_LEN (6 * 2 + 2)
 #define L2_HEADER_LEN (ETHER_HEADER_LEN + 2 + 2 + 32)
@@ -27,6 +154,7 @@ struct context_s
 	uint16_t counter_last;
 	bool got_packet;
 	bool cont;
+	struct cp_fds_s cp_fds;
 };
 
 static inline void convert_to_pcm24lep(uint8_t *dptr, const uint8_t *sptr, uint64_t channel_mask)
@@ -98,7 +226,7 @@ static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pkthea
 
 	convert_to_pcm24lep(pcm24lep, data_packet + L2_HEADER_LEN, header->channel_mask);
 
-	ssize_t written = write(1, buf, sizeof(struct capdev_proc_header_s) + header->n_data_bytes);
+	int written = cp_fds_write_data(&ctx->cp_fds, buf, sizeof(struct capdev_proc_header_s) + header->n_data_bytes);
 	if (written != sizeof(struct capdev_proc_header_s) + header->n_data_bytes) {
 		fprintf(stderr, "Failed to write\n");
 		ctx->cont = false;
@@ -146,31 +274,16 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Error: pcap_setfilter: %s\n", pcap_geterr(p));
 	}
 
-	int fd_pcap = pcap_get_selectable_fd(p);
-
 	struct context_s ctx = {0};
 
+	cp_fds_init(&ctx.cp_fds, p);
+
 	for (ctx.cont = true; ctx.cont;) {
-		int nfds = 1;
-		if (fd_pcap + 1 > nfds)
-			nfds = fd_pcap + 1;
-		fd_set readfds;
-		fd_set exceptfds;
-		FD_ZERO(&readfds);
-		FD_SET(0, &readfds);
-		FD_SET(0, &exceptfds);
-		if (fd_pcap >= 0)
-			FD_SET(fd_pcap, &readfds);
-
-		struct timeval timeout = {.tv_sec = 0, .tv_usec = fd_pcap >= 0 ? 50000 : 500};
-		int ret = select(nfds, &readfds, NULL, &exceptfds, &timeout);
-		if (ret < 0) {
-			perror("select");
+		if (!cp_fds_select(&ctx.cp_fds))
 			ctx.cont = false;
-		}
 
-		if (FD_ISSET(0, &readfds)) {
-			size_t bytes = read(0, &ctx.req, sizeof(ctx.req));
+		if (cp_fds_control_available(&ctx.cp_fds)) {
+			int bytes = cp_fds_read_control(&ctx.cp_fds, &ctx.req, sizeof(ctx.req));
 			if (bytes == 0 || ctx.req.flags & CAPDEV_REQ_FLAG_EXIT) {
 				fprintf(stderr, "Info normal exit '%s'\n", if_name ? if_name : "(null)");
 				ctx.cont = false;
@@ -184,12 +297,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if (FD_ISSET(0, &exceptfds)) {
-			fputs("0 appears on exceptfds. Exiting...\n", stderr);
-			ctx.cont = false;
-		}
-
-		if (fd_pcap < 0 || FD_ISSET(fd_pcap, &readfds)) {
+		if (cp_fds_pcap_available(&ctx.cp_fds)) {
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
 			if (pcap_next_ex(p, &header, &payload) == 1)
