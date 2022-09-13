@@ -58,7 +58,15 @@ set(PLUGIN_SOURCES
 	src/capdev.c
 )
 
+if(NOT OS_WINDOWS)
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} util/pipe-posix.c)
+else()
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} util/pipe-windows.c)
+endif()
+
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/util)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
 	OBS::libobs
