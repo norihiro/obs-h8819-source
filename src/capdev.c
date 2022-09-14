@@ -1,5 +1,3 @@
-#include <unistd.h>
-#include <sys/wait.h>
 #include <inttypes.h>
 #include <obs-module.h>
 #include <util/platform.h>
@@ -8,12 +6,17 @@
 #include "source.h"
 #include "capdev.h"
 #include "capdev-proc.h"
+#include "h8819-pipe.h"
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static capdev_t *devices = NULL;
 
 #define N_CHANNELS 40
+#ifndef OS_WINDOWS
 #define PROC_4219 "obs-h8819-proc"
+#else
+#define PROC_4219 "obs-h8819-proc.exe"
+#endif
 
 #define N_IGNORE_FIRST_PACKET 1024
 #define K_OFFSET_DECAY (256 * 16)
@@ -45,8 +48,6 @@ struct capdev_s
 
 	int packets_received;
 	int packets_missed;
-
-	pid_t pid;
 };
 
 capdev_t *capdev_get_ref(capdev_t *dev)
@@ -236,62 +237,21 @@ void capdev_unlink_source(capdev_t *dev, source_t *src)
 	pthread_mutex_unlock(&dev->mutex);
 }
 
-static bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
+static os_process_pipe_t *thread_start_proc(struct capdev_s *dev)
 {
-	int pipe_req[2];
-	int pipe_data[2];
-
-	if (pipe(pipe_req) < 0) {
-		blog(LOG_ERROR, "failed to create pipe");
-		return false;
-	}
-
-	if (pipe(pipe_data) < 0) {
-		blog(LOG_ERROR, "failed to create pipe");
-		close(pipe_req[0]);
-		close(pipe_req[1]);
-		return false;
-	}
-
 	char *proc_path = obs_module_file(PROC_4219);
+	char proc_4219[] = PROC_4219;
 
-	// TODO: consider using vfork
-	pid_t pid = fork();
-	if (pid < 0) {
-		blog(LOG_ERROR, "failed to fork");
-		close(pipe_req[0]);
-		close(pipe_req[1]);
-		close(pipe_data[0]);
-		close(pipe_data[1]);
-		bfree(proc_path);
-		return false;
+	char *const cmdline[] = {proc_4219, dev->name, NULL};
+
+	os_process_pipe_t *proc = os_process_pipe_create_v(proc_path, cmdline, "rw");
+	if (!proc) {
+		blog(LOG_ERROR, "failed to start process '%s'", proc_path);
 	}
-
-	if (pid == 0) {
-		// I'm a child
-		dup2(pipe_req[0], 0);
-		dup2(pipe_data[1], 1);
-		close(pipe_req[0]);
-		close(pipe_req[1]);
-		close(pipe_data[0]);
-		close(pipe_data[1]);
-		if (execlp(proc_path, PROC_4219, dev->name, NULL) < 0) {
-			fprintf(stderr, "Error: failed to exec \"%s\"\n", proc_path);
-			close(0);
-			close(1);
-			exit(1);
-		}
-	}
-
-	*fd_req = pipe_req[1];
-	close(pipe_req[0]);
-	*fd_data = pipe_data[0];
-	close(pipe_data[1]);
-	dev->pid = pid;
 
 	bfree(proc_path);
 
-	return true;
+	return proc;
 }
 
 struct data_info_s
@@ -386,8 +346,8 @@ static void *thread_main(void *data)
 	os_set_thread_name("h8819");
 	struct capdev_s *dev = data;
 
-	int fd_req = -1, fd_data = -1;
-	if (!thread_start_proc(dev, &fd_req, &fd_data)) {
+	os_process_pipe_t *proc = thread_start_proc(dev);
+	if (!proc) {
 		return NULL;
 	}
 
@@ -397,24 +357,19 @@ static void *thread_main(void *data)
 		if (dev->channel_mask != req.channel_mask) {
 			req.channel_mask = dev->channel_mask;
 			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
-			ssize_t ret = write(fd_req, &req, sizeof(req));
+			size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
 			if (ret != sizeof(req)) {
 				blog(LOG_ERROR, "write returns %d.", (int)ret);
 				break;
 			}
 		}
 
-		fd_set readfds;
-		FD_ZERO(&readfds);
-		FD_SET(fd_data, &readfds);
-		struct timeval timeout = {.tv_sec = 0, .tv_usec = 50 * 1000};
-		int ret_select = select(fd_data + 1, &readfds, NULL, NULL, &timeout);
-
-		if (ret_select <= 0)
+		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 2, 70);
+		if (!(pipe_mask & 2))
 			continue;
 
 		struct capdev_proc_header_s header_data;
-		ssize_t ret = read(fd_data, &header_data, sizeof(header_data));
+		size_t ret = os_process_pipe_read(proc, (void *)&header_data, sizeof(header_data));
 		if (ret != sizeof(header_data)) {
 			blog(LOG_ERROR, "capdev thread_main: read returns %d.", (int)ret);
 			break;
@@ -426,8 +381,8 @@ static void *thread_main(void *data)
 			blog(LOG_ERROR, "header_data.n_data_bytes = %d is too large.", header_data.n_data_bytes);
 			break;
 		}
-		ret = read(fd_data, buf, header_data.n_data_bytes);
-		if (ret != header_data.n_data_bytes) {
+		ret = os_process_pipe_read(proc, buf, header_data.n_data_bytes);
+		if (ret != (size_t)header_data.n_data_bytes) {
 			blog(LOG_ERROR, "capdev thread_main: read returns %d expected %d.", (int)ret,
 			     (int)header_data.n_data_bytes);
 			break;
@@ -481,24 +436,19 @@ static void *thread_main(void *data)
 			     dev->packets_received, dev->packets_missed);
 	}
 
-	blog(LOG_INFO, "exiting h8819 thread");
+	blog(dev->packets_missed ? LOG_ERROR : LOG_INFO, "h8819[%s]: %d packets received, %d packets dropped",
+	     dev->name, dev->packets_received, dev->packets_missed);
 
-	if (fd_req >= 0) {
+	if (proc) {
 		req.flags |= CAPDEV_REQ_FLAG_EXIT;
-		ssize_t ret = write(fd_req, &req, sizeof(req));
+		size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
 		if (ret != sizeof(req)) {
 			blog(LOG_ERROR, "write returns %d.", (int)ret);
 		}
 	}
 
-	close(fd_req);
-	close(fd_data);
-
-	int retval;
-	waitpid(dev->pid, &retval, 0);
+	int retval = os_process_pipe_destroy(proc);
 	blog(retval ? LOG_ERROR : LOG_INFO, "exit h8819 proc %d", retval);
-	blog(dev->packets_missed ? LOG_ERROR : LOG_INFO, "h8819[%s]: %d packets received, %d packets dropped",
-	     dev->name, dev->packets_received, dev->packets_missed);
 
 	return NULL;
 }
