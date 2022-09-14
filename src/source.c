@@ -71,8 +71,8 @@ static void update(void *data, obs_data_t *settings)
 	struct source_s *s = data;
 
 	const char *device_name = obs_data_get_string(settings, "device_name");
-	int channel_l = obs_data_get_int(settings, "channel_l") - 1;
-	int channel_r = obs_data_get_int(settings, "channel_r") - 1;
+	int channel_l = (int)obs_data_get_int(settings, "channel_l") - 1;
+	int channel_r = (int)obs_data_get_int(settings, "channel_r") - 1;
 
 	if (channel_l < 0)
 		channel_l = 0;

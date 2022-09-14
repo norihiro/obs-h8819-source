@@ -254,29 +254,6 @@ static os_process_pipe_t *thread_start_proc(struct capdev_s *dev)
 	return proc;
 }
 
-struct data_info_s
-{
-	const char *buf[N_CHANNELS];
-	int n_samples;
-};
-
-static void calculate_data_info(struct capdev_proc_header_s *h, const char *buf, struct data_info_s *info)
-{
-	const char *ptr = buf;
-	const int n_channels = countones_uint64(h->channel_mask);
-	size_t inc = n_channels ? h->n_data_bytes / n_channels : 0;
-	info->n_samples = inc / 3;
-	for (size_t i = 0; i < N_CHANNELS; i++) {
-		if (h->channel_mask & (1LL << i)) {
-			info->buf[i] = ptr;
-			ptr += inc;
-		}
-		else {
-			info->buf[i] = NULL;
-		}
-	}
-}
-
 static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t n_samples)
 {
 	for (size_t n = n_samples; n > 0; n--) {
