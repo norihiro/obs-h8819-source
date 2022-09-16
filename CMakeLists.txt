@@ -92,6 +92,9 @@ if(OS_WINDOWS)
 	target_include_directories(obs-h8819-proc PRIVATE ${NPCAP_INCLUDE_DIR})
 	target_link_directories(obs-h8819-proc PRIVATE ${NPCAP_LIBRARY_DIR})
 	target_link_libraries(obs-h8819-proc ${NPCAP_LIBRARIES})
+
+	install(TARGETS obs-h8819-proc
+		DESTINATION "${H8819_RELEASE_PATH}/data/obs-plugins/${CMAKE_PROJECT_NAME}")
 endif()
 
 if(OS_LINUX)

@@ -299,6 +299,7 @@ jobs:
             '-DNPCAP_INCLUDE_DIR=${{ env.NPCAP_INCLUDE_DIR }}'
             '-DNPCAP_LIBRARY_DIR=${{ env.NPCAP_LIBRARY_DIR }}'
             '-DNPCAP_LIBRARIES=${{ env.NPCAP_LIBRARIES }}'
+            "-DH8819_RELEASE_PATH=$(Resolve-Path -Path .)/release/"
           )
           cmake -S . -B build @CmakeArgs
           cmake --build build --config RelWithDebInfo -j 4
