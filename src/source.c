@@ -83,7 +83,7 @@ static void update(void *data, obs_data_t *settings)
 	if (channel_r >= 40)
 		channel_r = 40 - 1;
 
-	if (device_name && (!s->device_name || strcmp(device_name, s->device_name)))
+	if (device_name && *device_name && (!s->device_name || strcmp(device_name, s->device_name)))
 		update_device(s, device_name, channel_l, channel_r);
 
 	if (channel_l != s->channel_l || channel_r != s->channel_r)
