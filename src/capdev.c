@@ -242,6 +242,10 @@ void capdev_unlink_source(capdev_t *dev, source_t *src)
 static os_process_pipe_t *thread_start_proc(struct capdev_s *dev)
 {
 	char *proc_path = obs_module_file(PROC_4219);
+	if (!proc_path) {
+		blog(LOG_ERROR, "thread_start_proc: Cannot find '" PROC_4219 "'");
+		return NULL;
+	}
 	char proc_4219[] = PROC_4219;
 
 	char *const cmdline[] = {proc_4219, dev->name, NULL};
