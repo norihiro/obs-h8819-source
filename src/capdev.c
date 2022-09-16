@@ -21,6 +21,8 @@ static capdev_t *devices = NULL;
 #define N_IGNORE_FIRST_PACKET 1024
 #define K_OFFSET_DECAY (256 * 16)
 
+#define DEBUG_PROC
+
 struct source_list_s
 {
 	source_t *src;
@@ -243,6 +245,10 @@ static os_process_pipe_t *thread_start_proc(struct capdev_s *dev)
 	char proc_4219[] = PROC_4219;
 
 	char *const cmdline[] = {proc_4219, dev->name, NULL};
+
+#ifdef DEBUG_PROC
+	blog(LOG_INFO, "thread_start_proc: '%s' '%s' '%s'", proc_path, cmdline[0], cmdline[1]);
+#endif
 
 	os_process_pipe_t *proc = os_process_pipe_create_v(proc_path, cmdline, "rw");
 	if (!proc) {
