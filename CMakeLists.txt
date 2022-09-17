@@ -55,8 +55,13 @@ configure_file(
 set(PLUGIN_SOURCES
 	src/plugin-main.c
 	src/source.c
-	src/capdev.c
 )
+
+if(NOT OS_WINDOWS)
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev.c)
+else()
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev-windows.c)
+endif()
 
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
@@ -64,12 +69,12 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	OBS::libobs
 )
 
-add_executable(obs-h8819-proc
-	src/capdev-proc.c
-	src/capdev-proc.h
-)
-
 if(NOT OS_WINDOWS)
+	add_executable(obs-h8819-proc
+		src/capdev-proc.c
+		src/capdev-proc.h
+	)
+
 	target_link_libraries(obs-h8819-proc pcap)
 endif()
 
@@ -81,9 +86,9 @@ if(OS_WINDOWS)
 
 	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)
 
-	target_include_directories(obs-h8819-proc PRIVATE ${NPCAP_INCLUDE_DIR})
-	target_link_directories(obs-h8819-proc PRIVATE ${NPCAP_LIBRARY_DIR})
-	target_link_libraries(obs-h8819-proc ${NPCAP_LIBRARIES})
+	target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${NPCAP_INCLUDE_DIR})
+	target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE ${NPCAP_LIBRARY_DIR})
+	target_link_libraries(${CMAKE_PROJECT_NAME} ${NPCAP_LIBRARIES})
 endif()
 
 if(OS_LINUX)
