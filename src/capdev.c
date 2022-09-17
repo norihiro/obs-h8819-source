@@ -476,6 +476,12 @@ void capdev_enum_devices(void (*cb)(const char *name, const char *description, v
 
 		da.array[d1] = '\0';
 		da.array[d2] = '\0';
+#ifdef OS_WINDOWS
+		if (d1 > offset && da.array[d1 - 1] == '\r')
+			da.array[d1 - 1] = '\0';
+		if (d2 > d1 + 1 && da.array[d2 - 1] == '\r')
+			da.array[d2 - 1] = '\0';
+#endif
 		const char *name = da.array + offset;
 		const char *description = da.array + d1 + 1;
 
