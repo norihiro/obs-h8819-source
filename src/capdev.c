@@ -57,6 +57,7 @@ struct capdev_s
 
 #ifdef HAVE_WRITE_THREAD
 	pthread_t thread_write;
+	pthread_t thread_error;
 	os_process_pipe_t *proc;
 #endif
 };
@@ -368,6 +369,29 @@ static void *write_thread(void *data)
 
 	return NULL;
 }
+
+static void *error_thread(void *data)
+{
+	os_set_thread_name("h8819e");
+	struct capdev_s *dev = data;
+	os_process_pipe_t *proc = dev->proc;
+
+	while (true) {
+		char buf[128];
+		size_t ret = os_process_pipe_read_err(proc, (void *)buf, sizeof(buf) - 1);
+		if (!ret)
+			break;
+
+		if (buf[ret - 1] == '\n')
+			ret--;
+		if (buf[ret - 1] == '\r')
+			ret--;
+		buf[ret] = 0;
+		blog(LOG_INFO, "%s: %s", PROC_4219, buf);
+	}
+
+	return NULL;
+}
 #endif // HAVE_WRITE_THREAD
 
 static void *thread_main(void *data)
@@ -383,6 +407,7 @@ static void *thread_main(void *data)
 #ifdef HAVE_WRITE_THREAD
 	dev->proc = proc;
 	pthread_create(&dev->thread_write, NULL, write_thread, dev);
+	pthread_create(&dev->thread_error, NULL, error_thread, dev);
 #endif
 
 	struct capdev_proc_request_s req = {0};
@@ -402,6 +427,7 @@ static void *thread_main(void *data)
 
 		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 6, 70);
 
+#ifndef HAVE_WRITE_THREAD
 		if (pipe_mask & 4) {
 			char buf[128];
 			size_t ret = os_process_pipe_read_err(proc, (void *)buf, sizeof(buf) - 1);
@@ -417,6 +443,7 @@ static void *thread_main(void *data)
 				blog(LOG_INFO, "%s: Failed to read stderr", PROC_4219);
 			}
 		}
+#endif
 
 		if (!(pipe_mask & 2))
 			continue;
@@ -495,6 +522,10 @@ static void *thread_main(void *data)
 	     dev->name, dev->packets_received, dev->packets_missed);
 
 #ifdef HAVE_WRITE_THREAD
+	pthread_join(dev->thread_write, NULL);
+	pthread_join(dev->thread_error, NULL);
+
+#else // not HAVE_WRITE_THREAD
 	if (proc) {
 		req.flags |= CAPDEV_REQ_FLAG_EXIT;
 		size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
@@ -502,7 +533,6 @@ static void *thread_main(void *data)
 			blog(LOG_ERROR, "write returns %d when requesting to exit.", (int)ret);
 		}
 	}
-#endif
 
 	while (true) {
 		char buf[128];
@@ -517,6 +547,7 @@ static void *thread_main(void *data)
 		buf[ret] = 0;
 		blog(LOG_INFO, "%s: %s", PROC_4219, buf);
 	}
+#endif
 
 	int retval = os_process_pipe_destroy(proc);
 	blog(retval ? LOG_ERROR : LOG_INFO, "exit h8819 proc %d", retval);
