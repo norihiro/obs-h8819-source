@@ -457,6 +457,8 @@ static void *thread_main(void *data)
 			break;
 		}
 
+		blog(LOG_INFO, "got header n_data_bytes=%d", header_data.n_data_bytes);
+
 		uint8_t buf[1500];
 		float fltp_buf[500];
 		if (header_data.n_data_bytes > (int)sizeof(buf)) {

@@ -95,14 +95,17 @@ static void cp_fds_init(struct cp_fds_s *ctx, pcap_t *p)
 
 static bool cp_fds_select(struct cp_fds_s *ctx)
 {
+	fprintf(stderr, "cp_fds_select: handles=%d %d\n", (int)ctx->handles[0], (int)ctx->handles[1]);
 	ctx->retWait = WaitForMultipleObjects(2, ctx->handles, FALSE, 70);
 	switch (ctx->retWait) {
 	case WAIT_OBJECT_0:
 	case WAIT_OBJECT_0 + 1:
 		return true;
 	case WAIT_TIMEOUT:
+		fprintf(stderr, "WaitForMultipleObjects timeout\n");
 		return true;
 	default:
+		fprintf(stderr, "Error: WaitForMultipleObjects error %d\n", (int)ctx->retWait);
 		return false;
 	}
 }
@@ -228,6 +231,7 @@ static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pkthea
 
 	convert_to_pcm24lep(pcm24lep, data_packet + L2_HEADER_LEN, header->channel_mask);
 
+	fprintf(stderr, "Debug: sending audio timestamp=%d\n", (int)header->timestamp);
 	int written = cp_fds_write_data(&ctx->cp_fds, buf, sizeof(struct capdev_proc_header_s) + header->n_data_bytes);
 	if (written != sizeof(struct capdev_proc_header_s) + header->n_data_bytes) {
 		fprintf(stderr, "Failed to write\n");
@@ -340,13 +344,18 @@ int main(int argc, char **argv)
 				break;
 			}
 		}
+		else
+			fprintf(stderr, "No input is available\n");
 
 		if (cp_fds_pcap_available(&ctx.cp_fds)) {
+			fprintf(stderr, "Reading packet\n");
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
 			if (pcap_next_ex(p, &header, &payload) == 1)
 				got_msg(payload, header, &ctx);
 		}
+		else
+			fprintf(stderr, "No packet is available\n");
 	}
 
 	pcap_close(p);
