@@ -425,7 +425,7 @@ static void *thread_main(void *data)
 		}
 #endif
 
-		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 6, 70);
+		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 2, 70);
 
 #ifndef HAVE_WRITE_THREAD
 		if (pipe_mask & 4) {
