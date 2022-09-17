@@ -354,7 +354,22 @@ static void *thread_main(void *data)
 			}
 		}
 
-		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 2, 70);
+		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 6, 70);
+#ifdef OS_WINDOWS
+		if (pipe_mask & 4) {
+			char buf[128];
+			size_t ret = os_process_pipe_read_err(proc, (void *)buf, sizeof(buf) - 1);
+			if (ret > 0) {
+				if (buf[ret - 1] == '\n')
+					ret--;
+				if (buf[ret - 1] == '\r')
+					ret--;
+				buf[ret] = 0;
+				blog(LOG_INFO, "%s: %s", PROC_4219, buf);
+			}
+		}
+#endif // OS_WINDOWS
+
 		if (!(pipe_mask & 2))
 			continue;
 
