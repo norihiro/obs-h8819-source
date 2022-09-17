@@ -2,6 +2,7 @@
 #include <obs-module.h>
 #include <util/platform.h>
 #include <util/threading.h>
+#include <util/darray.h>
 #include "plugin-macros.generated.h"
 #include "source.h"
 #include "capdev.h"
@@ -17,6 +18,8 @@ static capdev_t *devices = NULL;
 #else
 #define PROC_4219 "obs-h8819-proc.exe"
 #endif
+
+#define LIST_DELIM '\n'
 
 #define N_IGNORE_FIRST_PACKET 1024
 #define K_OFFSET_DECAY (256 * 16)
@@ -248,7 +251,7 @@ static os_process_pipe_t *thread_start_proc(struct capdev_s *dev)
 	}
 	char proc_4219[] = PROC_4219;
 
-	char *const cmdline[] = {proc_4219, dev->name, NULL};
+	char *const cmdline[] = {proc_4219, dev ? dev->name : NULL, NULL};
 
 #ifdef DEBUG_PROC
 	blog(LOG_INFO, "thread_start_proc: '%s' '%s' '%s'", proc_path, cmdline[0], cmdline[1]);
@@ -438,4 +441,47 @@ static void *thread_main(void *data)
 	blog(retval ? LOG_ERROR : LOG_INFO, "exit h8819 proc %d", retval);
 
 	return NULL;
+}
+
+void capdev_enum_devices(void (*cb)(const char *name, const char *description, void *param), void *param)
+{
+	os_process_pipe_t *proc = thread_start_proc(NULL);
+	if (!proc)
+		return;
+
+	DARRAY(char) da;
+	da_init(da);
+
+	while (true) {
+		size_t n_read = 8;
+		size_t offset = da.num;
+		da_resize(da, offset + n_read);
+		n_read = os_process_pipe_read(proc, (void *)(da.array + offset), n_read);
+		da_resize(da, offset + n_read);
+		if (!n_read)
+			break;
+	}
+
+	os_process_pipe_destroy(proc);
+
+	for (size_t offset = 0; offset < da.num;) {
+		const char delim[] = {LIST_DELIM};
+		size_t d1 = da_find(da, delim, offset);
+		if (d1 == DARRAY_INVALID)
+			break;
+		size_t d2 = da_find(da, delim, d1 + 1);
+		if (d2 == DARRAY_INVALID)
+			break;
+
+		da.array[d1] = '\0';
+		da.array[d2] = '\0';
+		const char *name = da.array + offset;
+		const char *description = da.array + d1 + 1;
+
+		cb(name, description, param);
+
+		offset = d2 + 1;
+	}
+
+	da_free(da);
 }
