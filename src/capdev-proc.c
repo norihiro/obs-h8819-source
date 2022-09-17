@@ -12,6 +12,8 @@
 #include "capdev-proc.h"
 #include "common.h"
 
+#define DEBUG_PROC
+
 #ifndef OS_WINDOWS
 struct cp_fds_s
 {
@@ -309,6 +311,10 @@ int main(int argc, char **argv)
 	}
 
 	struct context_s ctx = {0};
+#ifdef DEBUG_PROC
+	fprintf(stderr, "Info: ctx.req.channel_mask=0x%x flags=0x%x\n", (int)ctx.req.channel_mask, (int)ctx.req.flags);
+#endif
+	memset(&ctx, 0, sizeof(ctx)); // TODO: really need this?
 
 	cp_fds_init(&ctx.cp_fds, p);
 
@@ -318,6 +324,10 @@ int main(int argc, char **argv)
 
 		if (cp_fds_control_available(&ctx.cp_fds)) {
 			int bytes = cp_fds_read_control(&ctx.cp_fds, &ctx.req, sizeof(ctx.req));
+#ifdef DEBUG_PROC
+			fprintf(stderr, "Info: ctx.req.channel_mask=0x%x flags=0x%x\n", (int)ctx.req.channel_mask,
+				(int)ctx.req.flags);
+#endif
 			if (bytes == 0 || ctx.req.flags & CAPDEV_REQ_FLAG_EXIT) {
 				fprintf(stderr, "Info normal exit '%s'\n", if_name ? if_name : "(null)");
 				ctx.cont = false;

@@ -257,7 +257,7 @@ static os_process_pipe_t *thread_start_proc(struct capdev_s *dev)
 	blog(LOG_INFO, "thread_start_proc: '%s' '%s' '%s'", proc_path, cmdline[0], cmdline[1]);
 #endif
 
-	os_process_pipe_t *proc = os_process_pipe_create_v(proc_path, cmdline, "rw");
+	os_process_pipe_t *proc = os_process_pipe_create_v(proc_path, cmdline, "rwe");
 	if (!proc) {
 		blog(LOG_ERROR, "failed to start process '%s'", proc_path);
 	}
@@ -355,7 +355,7 @@ static void *thread_main(void *data)
 		}
 
 		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 6, 70);
-#ifdef OS_WINDOWS
+
 		if (pipe_mask & 4) {
 			char buf[128];
 			size_t ret = os_process_pipe_read_err(proc, (void *)buf, sizeof(buf) - 1);
@@ -367,8 +367,10 @@ static void *thread_main(void *data)
 				buf[ret] = 0;
 				blog(LOG_INFO, "%s: %s", PROC_4219, buf);
 			}
+			else {
+				blog(LOG_INFO, "%s: Failed to read stderr", PROC_4219);
+			}
 		}
-#endif // OS_WINDOWS
 
 		if (!(pipe_mask & 2))
 			continue;
@@ -450,6 +452,20 @@ static void *thread_main(void *data)
 		if (ret != sizeof(req)) {
 			blog(LOG_ERROR, "write returns %d.", (int)ret);
 		}
+	}
+
+	while (true) {
+		char buf[128];
+		size_t ret = os_process_pipe_read_err(proc, (void *)buf, sizeof(buf) - 1);
+		if (!ret)
+			break;
+
+		if (buf[ret - 1] == '\n')
+			ret--;
+		if (buf[ret - 1] == '\r')
+			ret--;
+		buf[ret] = 0;
+		blog(LOG_INFO, "%s: %s", PROC_4219, buf);
 	}
 
 	int retval = os_process_pipe_destroy(proc);
