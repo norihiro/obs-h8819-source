@@ -17,6 +17,7 @@ static capdev_t *devices = NULL;
 #define PROC_4219 "obs-h8819-proc"
 #else
 #define PROC_4219 "obs-h8819-proc.exe"
+#define HAVE_WRITE_THREAD // Deadlock is observed on Windows when both processes are writing to the pipes.
 #endif
 
 #define LIST_DELIM '\n'
@@ -53,6 +54,11 @@ struct capdev_s
 
 	int packets_received;
 	int packets_missed;
+
+#ifdef HAVE_WRITE_THREAD
+	pthread_t thread_write;
+	os_process_pipe_t *proc;
+#endif
 };
 
 capdev_t *capdev_get_ref(capdev_t *dev)
@@ -331,6 +337,39 @@ static int64_t estimate_timestamp(struct capdev_s *dev, const struct capdev_proc
 	return ts;
 }
 
+#ifdef HAVE_WRITE_THREAD
+static void *write_thread(void *data)
+{
+	os_set_thread_name("h8819w");
+	struct capdev_s *dev = data;
+	os_process_pipe_t *proc = dev->proc;
+
+	struct capdev_proc_request_s req = {0};
+	while (dev->refcnt > -1) {
+		if (dev->channel_mask != req.channel_mask) {
+			req.channel_mask = dev->channel_mask;
+			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
+			size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
+			if (ret != sizeof(req)) {
+				blog(LOG_ERROR, "write returns %d when requesting channel_mask.", (int)ret);
+				break;
+			}
+		}
+		os_sleep_ms(34);
+	}
+
+	if (proc) {
+		req.flags |= CAPDEV_REQ_FLAG_EXIT;
+		size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
+		if (ret != sizeof(req)) {
+			blog(LOG_ERROR, "write returns %d when requesting to exit.", (int)ret);
+		}
+	}
+
+	return NULL;
+}
+#endif // HAVE_WRITE_THREAD
+
 static void *thread_main(void *data)
 {
 	os_set_thread_name("h8819");
@@ -341,18 +380,25 @@ static void *thread_main(void *data)
 		return NULL;
 	}
 
+#ifdef HAVE_WRITE_THREAD
+	dev->proc = proc;
+	pthread_create(&dev->thread_write, NULL, write_thread, dev);
+#endif
+
 	struct capdev_proc_request_s req = {0};
 
 	while (dev->refcnt > -1) {
+#ifndef HAVE_WRITE_THREAD
 		if (dev->channel_mask != req.channel_mask) {
 			req.channel_mask = dev->channel_mask;
 			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
 			size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
 			if (ret != sizeof(req)) {
-				blog(LOG_ERROR, "write returns %d.", (int)ret);
+				blog(LOG_ERROR, "write returns %d when requesting channel_mask.", (int)ret);
 				break;
 			}
 		}
+#endif
 
 		uint32_t pipe_mask = h8819_process_pipe_wait_read(proc, 6, 70);
 
@@ -448,13 +494,15 @@ static void *thread_main(void *data)
 	blog(dev->packets_missed ? LOG_ERROR : LOG_INFO, "h8819[%s]: %d packets received, %d packets dropped",
 	     dev->name, dev->packets_received, dev->packets_missed);
 
+#ifdef HAVE_WRITE_THREAD
 	if (proc) {
 		req.flags |= CAPDEV_REQ_FLAG_EXIT;
 		size_t ret = os_process_pipe_write(proc, (void *)&req, sizeof(req));
 		if (ret != sizeof(req)) {
-			blog(LOG_ERROR, "write returns %d.", (int)ret);
+			blog(LOG_ERROR, "write returns %d when requesting to exit.", (int)ret);
 		}
 	}
+#endif
 
 	while (true) {
 		char buf[128];
