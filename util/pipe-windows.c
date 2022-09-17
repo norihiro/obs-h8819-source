@@ -39,7 +39,7 @@ static bool create_pipe(HANDLE *input, HANDLE *output)
 	sa.nLength = sizeof(sa);
 	sa.bInheritHandle = true;
 
-	if (!CreatePipe(input, output, &sa, 0)) {
+	if (!CreatePipe(input, output, &sa, 1500 * 4)) {
 		return false;
 	}
 
