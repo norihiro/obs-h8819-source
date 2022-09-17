@@ -184,7 +184,7 @@ static bool has_special(const char *s)
 	return false;
 }
 
-static void build_command_line(struct dstr *cmd, const char *argv0, const char **argv)
+static void build_command_line(struct dstr *cmd, const char *argv0, const char *const *argv)
 {
 	dstr_init(cmd);
 	for (int i = 0; argv[i]; i++) {
