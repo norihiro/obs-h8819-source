@@ -375,6 +375,8 @@ static void *thread_main(void *data)
 		if (!(pipe_mask & 2))
 			continue;
 
+		blog(LOG_INFO, "attempting to read data from the proc");
+
 		struct capdev_proc_header_s header_data;
 		size_t ret = os_process_pipe_read(proc, (void *)&header_data, sizeof(header_data));
 		if (ret != sizeof(header_data)) {
