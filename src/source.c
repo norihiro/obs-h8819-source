@@ -22,12 +22,22 @@ static const char *get_name(void *type_data)
 	return obs_module_text("h8819 Audio");
 }
 
+static void device_name_enum_cb(const char *name, const char *description, void *param)
+{
+	obs_property_t *prop = param;
+
+	obs_property_list_add_string(prop, description, name);
+}
+
 static obs_properties_t *get_properties(void *data)
 {
 	UNUSED_PARAMETER(data);
 	obs_properties_t *props = obs_properties_create();
+	obs_property_t *prop;
 
-	obs_properties_add_text(props, "device_name", obs_module_text("Ethernet device"), OBS_TEXT_DEFAULT);
+	prop = obs_properties_add_list(props, "device_name", obs_module_text("Ethernet device"), OBS_COMBO_TYPE_LIST,
+				       OBS_COMBO_FORMAT_STRING);
+	capdev_enum_devices(device_name_enum_cb, prop);
 	obs_properties_add_int(props, "channel_l", obs_module_text("Channel Left"), 1, 40, 1);
 	obs_properties_add_int(props, "channel_r", obs_module_text("Channel Right"), 1, 40, 1);
 

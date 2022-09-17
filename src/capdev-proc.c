@@ -248,6 +248,8 @@ static int list_devices()
 	}
 
 	for (pcap_if_t *d = alldevs; d; d = d->next) {
+		if (d->flags & PCAP_IF_WIRELESS)
+			continue;
 		const char *name = d->name;
 		const char *description;
 		if (d->description)
