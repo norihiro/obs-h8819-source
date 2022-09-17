@@ -109,10 +109,44 @@ static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pkthea
 	ctx->got_packet = true;
 }
 
+static int list_devices()
+{
+	pcap_if_t *alldevs;
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	if (pcap_findalldevs(&alldevs, errbuf) < 0) {
+		fprintf(stderr, "Error: pcap_findalldevs failed: %s\n", errbuf);
+		return 1;
+	}
+
+	for (pcap_if_t *d = alldevs; d; d = d->next) {
+		if (d->flags & PCAP_IF_WIRELESS)
+			continue;
+		const char *name = d->name;
+		const char *description;
+		if (d->description)
+			description = d->description;
+		else
+			description = d->name;
+
+		if (strchr(name, '\n') || strchr(description, '\n'))
+			continue;
+
+		puts(name);
+		puts(description);
+	}
+
+	pcap_freealldevs(alldevs);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	const char *if_name = argc > 1 ? argv[1] : NULL;
+
+	if (!if_name)
+		return list_devices();
 
 	pcap_t *p = pcap_create(if_name, errbuf);
 
