@@ -4,6 +4,7 @@
 #include <obs-module.h>
 #include <util/platform.h>
 #include <util/threading.h>
+#include <util/darray.h>
 #include "plugin-macros.generated.h"
 #include "source.h"
 #include "capdev.h"
@@ -12,23 +13,27 @@
 
 #define PROC_4219 "obs-h8819-proc"
 
+#define LIST_DELIM '\n'
+
 #define K_OFFSET_DECAY (256 * 16)
 
-static bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
+static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 {
-	int pipe_req[2];
+	int pipe_req[2] = {-1, -1};
 	int pipe_data[2];
 
-	if (pipe(pipe_req) < 0) {
+	if (fd_req && pipe(pipe_req) < 0) {
 		blog(LOG_ERROR, "failed to create pipe");
-		return false;
+		return -1;
 	}
 
 	if (pipe(pipe_data) < 0) {
 		blog(LOG_ERROR, "failed to create pipe");
-		close(pipe_req[0]);
-		close(pipe_req[1]);
-		return false;
+		if (pipe_req[0] >= 0) {
+			close(pipe_req[0]);
+			close(pipe_req[1]);
+		}
+		return -1;
 	}
 
 	char *proc_path = obs_module_file(PROC_4219);
@@ -37,23 +42,27 @@ static bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 	pid_t pid = fork();
 	if (pid < 0) {
 		blog(LOG_ERROR, "failed to fork");
-		close(pipe_req[0]);
-		close(pipe_req[1]);
+		if (pipe_req[0] >= 0) {
+			close(pipe_req[0]);
+			close(pipe_req[1]);
+		}
 		close(pipe_data[0]);
 		close(pipe_data[1]);
 		bfree(proc_path);
-		return false;
+		return -1;
 	}
 
 	if (pid == 0) {
 		// I'm a child
-		dup2(pipe_req[0], 0);
+		if (pipe_req[0] >= 0) {
+			dup2(pipe_req[0], 0);
+			close(pipe_req[0]);
+			close(pipe_req[1]);
+		}
 		dup2(pipe_data[1], 1);
-		close(pipe_req[0]);
-		close(pipe_req[1]);
 		close(pipe_data[0]);
 		close(pipe_data[1]);
-		if (execlp(proc_path, PROC_4219, dev->name, NULL) < 0) {
+		if (execlp(proc_path, PROC_4219, name, NULL) < 0) {
 			fprintf(stderr, "Error: failed to exec \"%s\"\n", proc_path);
 			close(0);
 			close(1);
@@ -61,15 +70,16 @@ static bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 		}
 	}
 
-	*fd_req = pipe_req[1];
-	close(pipe_req[0]);
+	if (fd_req) {
+		*fd_req = pipe_req[1];
+		close(pipe_req[0]);
+	}
 	*fd_data = pipe_data[0];
 	close(pipe_data[1]);
-	dev->pid = pid;
 
 	bfree(proc_path);
 
-	return true;
+	return pid;
 }
 
 static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t n_samples)
@@ -111,7 +121,8 @@ void *capdev_thread_main(void *data)
 	struct capdev_s *dev = data;
 
 	int fd_req = -1, fd_data = -1;
-	if (!thread_start_proc(dev, &fd_req, &fd_data)) {
+	dev->pid = thread_start_proc(dev->name, &fd_req, &fd_data);
+	if (dev->pid < 0) {
 		return NULL;
 	}
 
@@ -225,4 +236,53 @@ void *capdev_thread_main(void *data)
 	     dev->name, dev->packets_received, dev->packets_missed);
 
 	return NULL;
+}
+
+void capdev_enum_devices(void (*cb)(const char *name, const char *description, void *param), void *param)
+{
+	int fd_data;
+	pid_t pid = thread_start_proc(NULL, NULL, &fd_data);
+	if (pid < 0)
+		return;
+
+	DARRAY(char) da;
+	da_init(da);
+
+	while (true) {
+		darray_ensure_capacity(1, &da.da, da.num + 512);
+		ssize_t n_read = read(fd_data, da.array + da.num, da.capacity - da.num);
+		if (n_read <= 0)
+			break;
+		da.num += n_read;
+	}
+
+	int retval;
+	waitpid(pid, &retval, 0);
+	if (WIFEXITED(retval))
+		blog(WEXITSTATUS(retval) ? LOG_ERROR : LOG_INFO, "exit h8819 proc %d", (int)WEXITSTATUS(retval));
+	else
+		blog(LOG_ERROR, "waitpid error %d", retval);
+
+	close(fd_data);
+
+	for (size_t offset = 0; offset < da.num;) {
+		const char delim[] = {LIST_DELIM};
+		size_t d1 = da_find(da, delim, offset);
+		if (d1 == DARRAY_INVALID)
+			break;
+		size_t d2 = da_find(da, delim, d1 + 1);
+		if (d2 == DARRAY_INVALID)
+			break;
+
+		da.array[d1] = '\0';
+		da.array[d2] = '\0';
+		const char *name = da.array + offset;
+		const char *description = da.array + d1 + 1;
+
+		cb(name, description, param);
+
+		offset = d2 + 1;
+	}
+
+	da_free(da);
 }
