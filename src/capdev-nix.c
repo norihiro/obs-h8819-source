@@ -265,6 +265,7 @@ void capdev_enum_devices(void (*cb)(const char *name, const char *description, v
 
 	close(fd_data);
 
+	blog(LOG_INFO, "Available devices:");
 	for (size_t offset = 0; offset < da.num;) {
 		const char delim[] = {LIST_DELIM};
 		size_t d1 = da_find(da, delim, offset);
@@ -279,7 +280,25 @@ void capdev_enum_devices(void (*cb)(const char *name, const char *description, v
 		const char *name = da.array + offset;
 		const char *description = da.array + d1 + 1;
 
-		cb(name, description, param);
+		bool unlist = false;
+#ifdef OS_LINUX
+		if (strncmp(name, "usbmon", 6) == 0)
+			unlist = true;
+		else if (strcmp(name, "nflog") == 0)
+			unlist = true;
+		else if (strcmp(name, "nfqueue") == 0)
+			unlist = true;
+#endif
+#ifdef OS_MACOS
+		if (strncmp(name, "UHC", 3) == 0)
+			unlist = true;
+		else if (strncmp(name, "EHC", 3) == 0)
+			unlist = true;
+#endif
+
+		blog(LOG_INFO, " '%s' '%s'%s", name, description, unlist ? " unlisted" : "");
+		if (!unlist)
+			cb(name, description, param);
 
 		offset = d2 + 1;
 	}

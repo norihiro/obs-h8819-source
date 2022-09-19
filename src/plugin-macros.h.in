@@ -23,6 +23,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define PLUGIN_VERSION "@CMAKE_PROJECT_VERSION@"
 #define ID_PREFIX "@ID_PREFIX@"
 
+#cmakedefine OS_WINDOWS
+#cmakedefine OS_LINUX
+#cmakedefine OS_MACOS
+
 #define blog(level, msg, ...) blog(level, "[" PLUGIN_NAME "] " msg, ##__VA_ARGS__)
 
 #endif // PLUGINNAME_H
