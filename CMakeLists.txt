@@ -55,10 +55,11 @@ configure_file(
 set(PLUGIN_SOURCES
 	src/plugin-main.c
 	src/source.c
+	src/capdev-common.c
 )
 
 if(NOT OS_WINDOWS)
-	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev.c)
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev-nix.c)
 else()
 	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev-windows.c)
 endif()
