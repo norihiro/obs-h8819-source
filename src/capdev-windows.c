@@ -107,6 +107,8 @@ static inline void convert_to_fltp(float *fltp_all[N_CHANNELS], float *dptr, con
 
 static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pktheader, struct capdev_s *dev)
 {
+	static const char *profile_name = "got_msg";
+
 	if (pktheader->caplen < sizeof(struct packet_header_s) + 2)
 		return;
 	const struct packet_header_s *packet_header = (const void *)data_packet;
@@ -127,6 +129,9 @@ static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pkthea
 	int n_channels = countones_uint64(channel_mask);
 	if (n_channels < 0 || 40 < n_channels)
 		return;
+
+	profile_start(profile_name);
+
 	int64_t ts_pcap = ts_pcap_to_obs(pktheader);
 	int n_data_bytes = 12 * 3 * n_channels;
 	int n_skipped_packets = 0;
@@ -172,12 +177,18 @@ static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pkthea
 	if (dev->packets_received % 262144 == 0)
 		blog(LOG_INFO, "h8819[%s] current status: %d packets received, %d packets dropped", dev->name,
 		     dev->packets_received, dev->packets_missed);
+
+	profile_end(profile_name);
 }
 
 void *capdev_thread_main(void *data)
 {
 	os_set_thread_name("h8819");
 	struct capdev_s *dev = data;
+
+	const char *profile_name =
+		profile_store_name(obs_get_profiler_name_store(), "h8819-capdev_thread_main(%s)", dev->name);
+	static const char *pcap_next_ex_name = "pcap_next_ex";
 
 	pcap_t *p = initialize_pcap(dev);
 
@@ -190,8 +201,15 @@ void *capdev_thread_main(void *data)
 		if (retWait == WAIT_OBJECT_0) {
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
-			if (pcap_next_ex(p, &header, &payload) == 1)
+			profile_start(profile_name);
+
+			profile_start(pcap_next_ex_name);
+			int retNext = pcap_next_ex(p, &header, &payload);
+			profile_end(pcap_next_ex_name);
+
+			if (retNext == 1)
 				got_msg(payload, header, dev);
+			profile_end(profile_name);
 		}
 	}
 
