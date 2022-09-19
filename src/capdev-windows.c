@@ -204,3 +204,29 @@ void *capdev_thread_main(void *data)
 
 	return NULL;
 }
+
+void capdev_enum_devices(void (*cb)(const char *name, const char *description, void *param), void *param)
+{
+	pcap_if_t *alldevs;
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	if (pcap_findalldevs(&alldevs, errbuf) < 0) {
+		blog(LOG_ERROR, "pcap_findalldevs failed: %s", errbuf);
+		return;
+	}
+
+	for (pcap_if_t *d = alldevs; d; d = d->next) {
+		if (d->flags & PCAP_IF_WIRELESS)
+			continue;
+		const char *name = d->name;
+		const char *description;
+		if (d->description)
+			description = d->description;
+		else
+			description = d->name;
+
+		cb(name, description, param);
+	}
+
+	pcap_freealldevs(alldevs);
+}
