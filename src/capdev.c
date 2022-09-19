@@ -284,7 +284,9 @@ static bool thread_start_proc(struct capdev_s *dev, int *fd_req, int *fd_data)
 	}
 
 	*fd_req = pipe_req[1];
+	close(pipe_req[0]);
 	*fd_data = pipe_data[0];
+	close(pipe_data[1]);
 	dev->pid = pid;
 
 	bfree(proc_path);
