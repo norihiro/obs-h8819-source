@@ -192,7 +192,7 @@ int main(int argc, char **argv)
 		if (fd_pcap < 0 || FD_ISSET(fd_pcap, &readfds)) {
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
-			if (pcap_next_ex(p, &header, &payload))
+			if (pcap_next_ex(p, &header, &payload) == 1)
 				got_msg(payload, header, &ctx);
 		}
 	}
