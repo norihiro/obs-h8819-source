@@ -104,12 +104,7 @@ cp scene-backup.json ~/.config/obs-studio/basic/scenes/Untitled.json
 
 ### Ethernet device
 Specifies which ethernet device to be monitored.
-
-To find the name of your ethernet device, run this command in terminal.
-```
-ifconfig -a
-```
-Then, choose your ethernet device. Usually it is named such as `enp2s0` or `en1`.
+Available devices will be listed on the popup list.
 
 ### Channel L / R
 Specify left and right channel to be captured.
@@ -133,10 +128,9 @@ Build flow is similar to that for Linux.
 
 After install, you need to set permission to capture raw packets. For example,
 ```
-sudo chmod og+rw /dev/bpf1
+sudo chmod og+rw /dev/bpf0
 ```
-Note that `bpf1` should be adjusted depending on your ethernet device to capture.
-To get the BPF device name, replace `en` with `bpf` in your ethernet device name.
+Note that `bpf0` in the example should be adjusted depending on your system and usage.
 
 ## Log file
 This plugin will periodically output log lines like below.
