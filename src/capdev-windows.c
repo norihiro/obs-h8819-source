@@ -191,6 +191,10 @@ void *capdev_thread_main(void *data)
 	static const char *pcap_next_ex_name = "pcap_next_ex";
 
 	pcap_t *p = initialize_pcap(dev);
+	if (!p) {
+		blog(LOG_ERROR, "capdev_thread_main: Failed to initialize pcap device '%s'", dev->name);
+		return NULL;
+	}
 
 	HANDLE hPCap = pcap_getevent(p);
 
