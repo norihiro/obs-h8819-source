@@ -62,6 +62,7 @@ if(NOT OS_WINDOWS)
 	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev-nix.c)
 else()
 	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/capdev-windows.c)
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} src/wireshark/capture_win_ifnames.c)
 endif()
 
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
@@ -89,7 +90,7 @@ if(OS_WINDOWS)
 
 	target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${NPCAP_INCLUDE_DIR})
 	target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE ${NPCAP_LIBRARY_DIR})
-	target_link_libraries(${CMAKE_PROJECT_NAME} ${NPCAP_LIBRARIES})
+	target_link_libraries(${CMAKE_PROJECT_NAME} ${NPCAP_LIBRARIES} Iphlpapi.lib)
 endif()
 
 if(OS_LINUX)

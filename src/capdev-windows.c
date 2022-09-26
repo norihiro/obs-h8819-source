@@ -7,6 +7,7 @@
 #include "source.h"
 #include "capdev.h"
 #include "capdev-internal.h"
+#include "wireshark/capture_win_ifnames.h"
 
 #define K_OFFSET_DECAY (256 * 16)
 
@@ -242,12 +243,17 @@ void capdev_enum_devices(void (*cb)(const char *name, const char *description, v
 			continue;
 		const char *name = d->name;
 		const char *description;
-		if (d->description)
+		char *friendly_desc = get_windows_interface_friendly_name(name);
+		if (friendly_desc)
+			description = friendly_desc;
+		else if (d->description)
 			description = d->description;
 		else
 			description = d->name;
 
 		cb(name, description, param);
+
+		bfree(friendly_desc);
 	}
 
 	pcap_freealldevs(alldevs);
