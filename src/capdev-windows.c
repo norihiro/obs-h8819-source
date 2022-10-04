@@ -175,9 +175,11 @@ static void got_msg(const uint8_t *data_packet, const struct pcap_pkthdr *pkthea
 
 	dev->packets_received++;
 	dev->packets_missed += n_skipped_packets;
-	if (dev->packets_received % 262144 == 0)
+	if (dev->packets_received % 65536 == 0 && dev->packets_missed != dev->packets_missed_llog) {
 		blog(LOG_INFO, "h8819[%s] current status: %d packets received, %d packets dropped", dev->name,
 		     dev->packets_received, dev->packets_missed);
+		dev->packets_missed_llog = dev->packets_missed;
+	}
 
 	profile_end(profile_name);
 }

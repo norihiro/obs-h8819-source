@@ -211,9 +211,11 @@ void *capdev_thread_main(void *data)
 
 		dev->packets_received++;
 		dev->packets_missed += header_data.n_skipped_packets;
-		if (dev->packets_received % 262144 == 0)
+		if (dev->packets_received % 65536 == 0 && dev->packets_missed != dev->packets_missed_llog) {
 			blog(LOG_INFO, "h8819[%s] current status: %d packets received, %d packets dropped", dev->name,
 			     dev->packets_received, dev->packets_missed);
+			dev->packets_missed_llog = dev->packets_missed;
+		}
 	}
 
 	blog(LOG_INFO, "exiting h8819 thread");

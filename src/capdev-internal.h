@@ -30,6 +30,7 @@ struct capdev_s
 
 	int packets_received;
 	int packets_missed;
+	int packets_missed_llog;
 
 #ifndef OS_WINDOWS
 	pid_t pid;
