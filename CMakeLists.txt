@@ -16,6 +16,8 @@ set(ID_PREFIX "net.nagater.obs-h8819-source.")
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
+option(ENABLE_COVERAGE "Enable coverage option for GCC" OFF)
+
 # TAKE NOTE: No need to edit things past this point
 
 option(LINUX_DEB_PKG "Make deb package for Linux" ON)
@@ -101,6 +103,11 @@ if(OS_LINUX)
 
 	configure_file(installer/linux-setcap.sh.in setcap.sh)
 	install(CODE "execute_process(COMMAND ./setcap.sh)")
+
+	if(ENABLE_COVERAGE)
+		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
+		target_link_options(${PROJECT_NAME} PRIVATE -coverage)
+	endif()
 endif()
 
 if(APPLE)
