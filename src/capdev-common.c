@@ -171,6 +171,27 @@ void capdev_update_source(capdev_t *dev, source_t *src, const int *channels)
 	pthread_mutex_unlock(&dev->mutex);
 }
 
+void capdev_save_file(capdev_t *dev, source_t *src, const char *name)
+{
+	pthread_mutex_lock(&dev->mutex);
+
+	for (struct source_list_s *item = dev->sources; item; item = item->next) {
+		if (item->src != src)
+			continue;
+
+		if (name && item->filename && strcmp(name, item->filename) == 0)
+			break;
+		if (!name && !item->filename)
+			break;
+
+		bfree(item->filename);
+		item->filename = name ? bstrdup(name) : NULL;
+		break;
+	}
+
+	pthread_mutex_unlock(&dev->mutex);
+}
+
 void capdev_unlink_source(capdev_t *dev, source_t *src)
 {
 	pthread_mutex_lock(&dev->mutex);
@@ -182,6 +203,7 @@ void capdev_unlink_source(capdev_t *dev, source_t *src)
 		*item->prev_next = item->next;
 		if (item->next)
 			item->next->prev_next = item->prev_next;
+		bfree(item->filename);
 		bfree(item);
 		break;
 	}

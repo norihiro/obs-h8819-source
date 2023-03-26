@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <pcap.h>
@@ -183,6 +184,7 @@ int main(int argc, char **argv)
 	int fd_pcap = pcap_get_selectable_fd(p);
 
 	struct context_s ctx = {0};
+	pcap_dumper_t *pd = NULL;
 
 	for (ctx.cont = true; ctx.cont;) {
 		int nfds = 1;
@@ -205,8 +207,9 @@ int main(int argc, char **argv)
 
 		if (FD_ISSET(0, &readfds)) {
 			size_t bytes = read(0, &ctx.req, sizeof(ctx.req));
-			if (bytes == 0 || ctx.req.flags & CAPDEV_REQ_FLAG_EXIT) {
-				fprintf(stderr, "Info normal exit '%s'\n", if_name ? if_name : "(null)");
+			if (bytes == 0 || (ctx.req.flags & CAPDEV_REQ_FLAG_EXIT)) {
+				fprintf(stderr, "Info normal exit '%s' bytes=%d flags=%d\n",
+					if_name ? if_name : "(null)", (int)bytes, (int)ctx.req.flags);
 				ctx.cont = false;
 				break;
 			}
@@ -215,6 +218,24 @@ int main(int argc, char **argv)
 					(int)sizeof(ctx.req));
 				ctx.cont = false;
 				break;
+			}
+
+			if (ctx.req.flags & CAPDEV_REQ_FLAG_SAVE_FILENAME) {
+				size_t len = ctx.req.unused;
+				char *name = malloc(len + 1);
+				name[len] = 0;
+				read(0, name, len);
+				if (pd)
+					pcap_dump_close(pd);
+				fprintf(stderr, "Info: opening file '%s'\n", name);
+				pd = pcap_dump_open(p, name);
+				free(name);
+			}
+
+			if (pd && !(ctx.req.flags & CAPDEV_REQ_FLAG_SAVE)) {
+				fprintf(stderr, "Info: closing the dump file\n");
+				pcap_dump_close(pd);
+				pd = NULL;
 			}
 		}
 
@@ -226,10 +247,16 @@ int main(int argc, char **argv)
 		if (fd_pcap < 0 || FD_ISSET(fd_pcap, &readfds)) {
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
-			if (pcap_next_ex(p, &header, &payload) == 1)
+			if (pcap_next_ex(p, &header, &payload) == 1) {
 				got_msg(payload, header, &ctx);
+				if (pd)
+					pcap_dump((u_char *)pd, header, payload);
+			}
 		}
 	}
+
+	if (pd)
+		pcap_dump_close(pd);
 
 	pcap_close(p);
 

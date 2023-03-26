@@ -1,4 +1,5 @@
 #include <obs-module.h>
+#include <util/platform.h>
 #include "plugin-macros.generated.h"
 #include "source.h"
 #include "capdev.h"
@@ -11,6 +12,7 @@ struct source_s
 	char *device_name;
 	int channel_l;
 	int channel_r;
+	char *save_filename_fmt;
 
 	// internal data
 	capdev_t *capdev;
@@ -40,6 +42,9 @@ static obs_properties_t *get_properties(void *data)
 	capdev_enum_devices(device_name_enum_cb, prop);
 	obs_properties_add_int(props, "channel_l", obs_module_text("Channel Left"), 1, 40, 1);
 	obs_properties_add_int(props, "channel_r", obs_module_text("Channel Right"), 1, 40, 1);
+
+	obs_properties_add_bool(props, "save", obs_module_text("Prop.SaveFile"));
+	obs_properties_add_text(props, "save_filename_fmt", obs_module_text("Prop.SaveFileFormat"), OBS_TEXT_DEFAULT);
 
 	return props;
 }
@@ -76,6 +81,27 @@ static void update_channels(struct source_s *s, int channel_l, int channel_r)
 	s->channel_r = channel_r;
 }
 
+static void update_save_file(struct source_s *s, bool save, const char *save_filename_fmt, bool force)
+{
+	if (!save) {
+		if (s->save_filename_fmt || force) {
+			capdev_save_file(s->capdev, s, NULL);
+			bfree(s->save_filename_fmt);
+			s->save_filename_fmt = NULL;
+		}
+		return;
+	}
+
+	if (s->save_filename_fmt && strcmp(s->save_filename_fmt, save_filename_fmt) == 0 && !force)
+		return;
+
+	bfree(s->save_filename_fmt);
+	s->save_filename_fmt = bstrdup(save_filename_fmt);
+	char *save_filename = os_generate_formatted_filename("pcap", false, save_filename_fmt);
+	capdev_save_file(s->capdev, s, save_filename);
+	bfree(save_filename);
+}
+
 static void update(void *data, obs_data_t *settings)
 {
 	struct source_s *s = data;
@@ -93,11 +119,22 @@ static void update(void *data, obs_data_t *settings)
 	if (channel_r >= 40)
 		channel_r = 40 - 1;
 
-	if (device_name && (!s->device_name || strcmp(device_name, s->device_name)))
+	bool save = obs_data_get_bool(settings, "save");
+	const char *save_filename_fmt = save ? obs_data_get_string(settings, "save_filename_fmt") : NULL;
+	if (save_filename_fmt && !*save_filename_fmt)
+		save_filename_fmt = NULL;
+
+	bool device_changed = false;
+
+	if (device_name && (!s->device_name || strcmp(device_name, s->device_name))) {
 		update_device(s, device_name, channel_l, channel_r);
+		device_changed = true;
+	}
 
 	if (channel_l != s->channel_l || channel_r != s->channel_r)
 		update_channels(s, channel_l, channel_r);
+
+	update_save_file(s, save, save_filename_fmt, device_changed);
 }
 
 static void *create(obs_data_t *settings, obs_source_t *source)
@@ -120,6 +157,7 @@ static void destroy(void *data)
 	}
 
 	bfree(s->device_name);
+	bfree(s->save_filename_fmt);
 	bfree(s);
 }
 
