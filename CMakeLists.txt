@@ -77,7 +77,11 @@ if(NOT OS_WINDOWS)
 	add_executable(obs-h8819-proc
 		src/capdev-proc.c
 		src/capdev-proc.h
+		src/pcap-dump-thread.cc
+		src/pcap-dump-thread.h
 	)
+
+	target_compile_features(obs-h8819-proc PRIVATE cxx_std_11)
 
 	target_link_libraries(obs-h8819-proc pcap)
 endif()
