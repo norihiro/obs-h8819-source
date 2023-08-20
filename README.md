@@ -110,6 +110,16 @@ Available devices will be listed on the popup list.
 Specify left and right channel to be captured.
 Available range is 1 to 40.
 
+### Save to file
+*Not available on Windows*
+Enables to save raw packets into a pcap capture file.
+
+### Save file name format
+*Not available on Windows*
+Specifies file name format to save.
+Format strings are same as the recording files of OBS.
+This file name format should be absoluted path. An extension `.pcap` will be added automatically.
+
 ## Build and install
 ### Linux
 Use cmake to build on Linux. After checkout, run these commands.
