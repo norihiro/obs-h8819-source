@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <pcap.h>
 #include "capdev-proc.h"
+#include "pcap-dump-thread.h"
 #include "common.h"
 
 #define ETHER_HEADER_LEN (6 * 2 + 2)
@@ -184,7 +185,7 @@ int main(int argc, char **argv)
 	int fd_pcap = pcap_get_selectable_fd(p);
 
 	struct context_s ctx = {0};
-	pcap_dumper_t *pd = NULL;
+	pcap_dump_thread_t *pdt = NULL, *pdt_prev = NULL;
 
 	for (ctx.cont = true; ctx.cont;) {
 		int nfds = 1;
@@ -220,22 +221,24 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			if (pdt && ((ctx.req.flags & CAPDEV_REQ_FLAG_SAVE_FILENAME) ||
+				    !(ctx.req.flags & CAPDEV_REQ_FLAG_SAVE))) {
+				fprintf(stderr, "Info: finalizing to dump file\n");
+				pcap_dump_thread_stop(pdt);
+
+				pcap_dump_thread_release(pdt_prev);
+				pdt_prev = pdt;
+				pdt = NULL;
+			}
+
 			if (ctx.req.flags & CAPDEV_REQ_FLAG_SAVE_FILENAME) {
 				size_t len = ctx.req.unused;
 				char *name = malloc(len + 1);
 				name[len] = 0;
 				read(0, name, len);
-				if (pd)
-					pcap_dump_close(pd);
-				fprintf(stderr, "Info: opening file '%s'\n", name);
-				pd = pcap_dump_open(p, name);
+				fprintf(stderr, "Info: preparing to dump file '%s'\n", name);
+				pdt = pcap_dump_thread_create(p, name);
 				free(name);
-			}
-
-			if (pd && !(ctx.req.flags & CAPDEV_REQ_FLAG_SAVE)) {
-				fprintf(stderr, "Info: closing the dump file\n");
-				pcap_dump_close(pd);
-				pd = NULL;
 			}
 		}
 
@@ -249,14 +252,15 @@ int main(int argc, char **argv)
 			const uint8_t *payload;
 			if (pcap_next_ex(p, &header, &payload) == 1) {
 				got_msg(payload, header, &ctx);
-				if (pd)
-					pcap_dump((u_char *)pd, header, payload);
+				if (pdt) {
+					pcap_dump_thread_dump(pdt, header, payload);
+				}
 			}
 		}
 	}
 
-	if (pd)
-		pcap_dump_close(pd);
+	pcap_dump_thread_release(pdt_prev);
+	pcap_dump_thread_release(pdt);
 
 	pcap_close(p);
 
