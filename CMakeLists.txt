@@ -83,7 +83,7 @@ if(NOT OS_WINDOWS)
 
 	target_compile_features(obs-h8819-proc PRIVATE cxx_std_11)
 
-	target_link_libraries(obs-h8819-proc pcap)
+	target_link_libraries(obs-h8819-proc pcap pthread)
 endif()
 
 if(OS_WINDOWS)
