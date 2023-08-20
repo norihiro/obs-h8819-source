@@ -107,6 +107,8 @@ if(OS_LINUX)
 	if(ENABLE_COVERAGE)
 		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
 		target_link_options(${PROJECT_NAME} PRIVATE -coverage)
+		target_compile_options(obs-h8819-proc PRIVATE -coverage)
+		target_link_options(obs-h8819-proc PRIVATE -coverage)
 	endif()
 endif()
 
