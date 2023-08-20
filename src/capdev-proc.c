@@ -235,7 +235,12 @@ int main(int argc, char **argv)
 				size_t len = ctx.req.unused;
 				char *name = malloc(len + 1);
 				name[len] = 0;
-				read(0, name, len);
+				ssize_t len_read = read(0, name, len);
+				if (len_read != len) {
+					fprintf(stderr, "Error: read %zd bytes, expected %zu bytes.\n", len_read, len);
+					ctx.cont = false;
+					break;
+				}
 				fprintf(stderr, "Info: preparing to dump file '%s'\n", name);
 				pdt = pcap_dump_thread_create(p, name);
 				free(name);
