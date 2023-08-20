@@ -43,8 +43,10 @@ static obs_properties_t *get_properties(void *data)
 	obs_properties_add_int(props, "channel_l", obs_module_text("Channel Left"), 1, 40, 1);
 	obs_properties_add_int(props, "channel_r", obs_module_text("Channel Right"), 1, 40, 1);
 
+#ifndef _WIN32
 	obs_properties_add_bool(props, "save", obs_module_text("Prop.SaveFile"));
 	obs_properties_add_text(props, "save_filename_fmt", obs_module_text("Prop.SaveFileFormat"), OBS_TEXT_DEFAULT);
+#endif
 
 	return props;
 }
