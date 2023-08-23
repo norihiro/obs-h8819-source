@@ -89,6 +89,12 @@ static void update_channels(struct source_s *s, int channel_l, int channel_r)
 	s->channel_r = channel_r;
 }
 
+#if LIBOBS_API_VER >= MAKE_SEMANTIC_VERSION(29, 1, 0)
+#define FMTEXT NULL
+#else
+#define FMTEXT (obs_get_version() >= MAKE_SEMANTIC_VERSION(29, 1, 0) ? NULL : "pcap")
+#endif
+
 static void update_save_file(struct source_s *s, bool save, const char *save_filename_fmt, bool force)
 {
 	if (!save) {
@@ -105,7 +111,7 @@ static void update_save_file(struct source_s *s, bool save, const char *save_fil
 
 	bfree(s->save_filename_fmt);
 	s->save_filename_fmt = bstrdup(save_filename_fmt);
-	char *save_filename = os_generate_formatted_filename("pcap", false, save_filename_fmt);
+	char *save_filename = os_generate_formatted_filename(FMTEXT, false, save_filename_fmt);
 	capdev_save_file(s->capdev, s, save_filename);
 	bfree(save_filename);
 }

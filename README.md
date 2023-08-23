@@ -118,7 +118,9 @@ Enables to save raw packets into a pcap capture file.
 *Not available on Windows*
 Specifies file name format to save.
 Format strings are same as the recording files of OBS.
-This file name format should be absoluted path. An extension `.pcap` will be added automatically.
+This file name format should be absoluted path.
+
+Note: For OBS 29.0 and older, an extension `.pcap` will be added automatically.
 
 ## Build and install
 ### Linux
