@@ -1,6 +1,8 @@
 #pragma once
 
 #define CAPDEV_REQ_FLAG_EXIT 1
+#define CAPDEV_REQ_FLAG_SAVE 2
+#define CAPDEV_REQ_FLAG_SAVE_FILENAME 4
 
 struct capdev_proc_request_s
 {
