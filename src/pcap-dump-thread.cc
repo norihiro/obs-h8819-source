@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <vector>
 #include <string>
+#include <cstring>
 #include <list>
 #include <thread>
 #include <atomic>
@@ -9,13 +9,20 @@
 #include <pcap.h>
 #include "pcap-dump-thread.h"
 
+#define PAYLOAD_SIZE 1500
+
 struct packet
 {
 	struct pcap_pkthdr header;
-	std::vector<uint8_t> payload;
+	uint8_t payload[PAYLOAD_SIZE];
 
 	packet() {}
-	packet(struct pcap_pkthdr *h, const uint8_t *p) : header(*h), payload(p, p + h->caplen) {}
+	packet(struct pcap_pkthdr *h, const uint8_t *p) : header(*h)
+	{
+		if (h->caplen > sizeof(payload))
+			h->caplen = sizeof(payload);
+		memcpy(payload, p, h->caplen);
+	}
 };
 
 struct pcap_dump_thread
@@ -96,7 +103,7 @@ void pcap_dump_thread_thread(pcap_dump_thread_t *ctx)
 		}
 
 		if (pd) {
-			pcap_dump((u_char *)pd, &pkt.header, pkt.payload.data());
+			pcap_dump((u_char *)pd, &pkt.header, pkt.payload);
 		}
 	}
 
