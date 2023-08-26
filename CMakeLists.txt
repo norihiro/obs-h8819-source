@@ -81,7 +81,7 @@ if(NOT OS_WINDOWS)
 		src/pcap-dump-thread.h
 	)
 
-	target_compile_features(obs-h8819-proc PRIVATE cxx_std_11)
+	target_compile_features(obs-h8819-proc PRIVATE cxx_std_17)
 
 	target_link_libraries(obs-h8819-proc pcap pthread)
 endif()
