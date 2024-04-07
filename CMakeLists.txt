@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(obs-h8819-source VERSION 0.3.1)
+project(obs-h8819-source VERSION 0.3.2)
 
 # Replace `Your Name Here` with the name (yours or your organization's) you want
 # to see as the author of the plugin (in the plugin's metadata itself and in the installers)
