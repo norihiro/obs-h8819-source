@@ -1,3 +1,8 @@
+#ifdef __APPLE__
+#include <libproc.h>
+#else
+#define _GNU_SOURCE // close_range
+#endif
 #include <unistd.h>
 #include <sys/wait.h>
 #include <inttypes.h>
@@ -16,6 +21,22 @@
 #define LIST_DELIM '\n'
 
 #define K_OFFSET_DECAY (256 * 16)
+
+#if defined(__APPLE__)
+static void closefrom(int lower)
+{
+	struct proc_fdinfo fds[128];
+	pid_t pid = getpid();
+	int ret;
+	do {
+		ret = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fds, sizeof(fds)) / sizeof(*fds);
+		for (int i = 0; i < ret; i++) {
+			if (fds[i].proc_fd >= lower)
+				close(fds[i].proc_fd);
+		}
+	} while (ret >= sizeof(fds) / sizeof(*fds));
+}
+#endif
 
 static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 {
@@ -62,6 +83,11 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 		dup2(pipe_data[1], 1);
 		close(pipe_data[0]);
 		close(pipe_data[1]);
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
+		closefrom(3);
+#else // Linux
+		close_range(3, 65535, 0);
+#endif
 		if (execlp(proc_path, PROC_4219, name, NULL) < 0) {
 			fprintf(stderr, "Error: failed to exec \"%s\"\n", proc_path);
 			close(0);
