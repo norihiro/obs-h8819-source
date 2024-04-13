@@ -17,6 +17,7 @@ set(ID_PREFIX "net.nagater.obs-h8819-source.")
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
 option(ENABLE_COVERAGE "Enable coverage option for GCC" OFF)
+option(ENABLE_ASYNC_COMPENSATION "Enable async-compensation property for the PR 6351" OFF)
 
 # TAKE NOTE: No need to edit things past this point
 

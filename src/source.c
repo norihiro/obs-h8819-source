@@ -40,6 +40,9 @@ static obs_properties_t *get_properties(void *data)
 	capdev_enum_devices(device_name_enum_cb, prop);
 	obs_properties_add_int(props, "channel_l", obs_module_text("Channel Left"), 1, 40, 1);
 	obs_properties_add_int(props, "channel_r", obs_module_text("Channel Right"), 1, 40, 1);
+#ifdef ENABLE_ASYNC_COMPENSATION
+	obs_properties_add_bool(props, "async_compensation", obs_module_text("AsyncCompensation"));
+#endif
 
 	return props;
 }
@@ -98,6 +101,10 @@ static void update(void *data, obs_data_t *settings)
 
 	if (channel_l != s->channel_l || channel_r != s->channel_r)
 		update_channels(s, channel_l, channel_r);
+
+#ifdef ENABLE_ASYNC_COMPENSATION
+	obs_source_set_async_compensation(s->context, obs_data_get_bool(settings, "async_compensation"));
+#endif
 }
 
 static void *create(obs_data_t *settings, obs_source_t *source)

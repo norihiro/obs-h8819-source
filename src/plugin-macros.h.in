@@ -27,6 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #cmakedefine OS_LINUX
 #cmakedefine OS_MACOS
 
+#cmakedefine ENABLE_ASYNC_COMPENSATION
+
 #define blog(level, msg, ...) blog(level, "[" PLUGIN_NAME "] " msg, ##__VA_ARGS__)
 
 #endif // PLUGINNAME_H
