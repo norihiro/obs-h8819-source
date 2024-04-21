@@ -1,10 +1,11 @@
 #ifdef __APPLE__
 #include <libproc.h>
 #else
-#define _GNU_SOURCE // close_range
+#define _GNU_SOURCE // close_range, pipe2
 #endif
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <obs-module.h>
 #include <util/platform.h>
@@ -36,6 +37,20 @@ static void closefrom(int lower)
 		}
 	} while (ret >= sizeof(fds) / sizeof(*fds));
 }
+
+static int pipe2(int pipefd[2], int flags)
+{
+	int ret = pipe(pipefd);
+	if (ret)
+		return ret;
+
+	if (flags & O_CLOEXEC) {
+		fcntl(pipefd[0], F_SETFD, FD_CLOEXEC);
+		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
+	}
+
+	return 0;
+}
 #endif
 
 static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
@@ -43,12 +58,12 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 	int pipe_req[2] = {-1, -1};
 	int pipe_data[2];
 
-	if (fd_req && pipe(pipe_req) < 0) {
+	if (fd_req && pipe2(pipe_req, O_CLOEXEC) < 0) {
 		blog(LOG_ERROR, "failed to create pipe");
 		return -1;
 	}
 
-	if (pipe(pipe_data) < 0) {
+	if (pipe2(pipe_data, O_CLOEXEC) < 0) {
 		blog(LOG_ERROR, "failed to create pipe");
 		if (pipe_req[0] >= 0) {
 			close(pipe_req[0]);
