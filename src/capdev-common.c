@@ -192,7 +192,7 @@ static bool capdev_can_save_file_unlocked(capdev_t *dev, source_t *src)
 
 static inline void capdev_save_file_unlocked(capdev_t *dev, source_t *src, const char *name)
 {
-	if (!capdev_can_save_file_unlocked(dev, src))
+	if (name && !capdev_can_save_file_unlocked(dev, src))
 		return;
 
 	struct source_list_s *item = source_to_item_unlocked(dev, src);

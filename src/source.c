@@ -31,6 +31,43 @@ static void device_name_enum_cb(const char *name, const char *description, void 
 	obs_property_list_add_string(prop, description, name);
 }
 
+#ifndef _WIN32
+static bool need_to_hide_save(struct source_s *s)
+{
+	/* If capdev says this source can request to save file, show the property. */
+	if (s->capdev && capdev_can_save_file(s->capdev, s))
+		return false;
+
+	/* If "save" has already been set, do not hide the property. */
+	if (!s->context)
+		return true;
+	obs_data_t *settings = obs_source_get_settings(s->context);
+	if (settings) {
+		bool save = obs_data_get_bool(settings, "save");
+		obs_data_release(settings);
+		return !save;
+	}
+
+	return true;
+}
+
+static bool device_name_modified(void *priv, obs_properties_t *props, obs_property_t *property, obs_data_t *settings)
+{
+	UNUSED_PARAMETER(property);
+	UNUSED_PARAMETER(settings);
+	struct source_s *s = priv;
+
+	bool hide_new = need_to_hide_save(s);
+	obs_property_t *prop = obs_properties_get(props, "save");
+	bool hide_old = !obs_property_enabled(prop);
+	if (hide_new != hide_old) {
+		obs_property_set_enabled(prop, !hide_new);
+		return true;
+	}
+	return false;
+}
+#endif
+
 static obs_properties_t *get_properties(void *data)
 {
 	struct source_s *s = data;
@@ -40,6 +77,9 @@ static obs_properties_t *get_properties(void *data)
 	prop = obs_properties_add_list(props, "device_name", obs_module_text("Ethernet device"), OBS_COMBO_TYPE_LIST,
 				       OBS_COMBO_FORMAT_STRING);
 	capdev_enum_devices(device_name_enum_cb, prop);
+#ifndef _WIN32
+	obs_property_set_modified_callback2(prop, device_name_modified, s);
+#endif
 	obs_properties_add_int(props, "channel_l", obs_module_text("Channel Left"), 1, 40, 1);
 	obs_properties_add_int(props, "channel_r", obs_module_text("Channel Right"), 1, 40, 1);
 #ifdef ENABLE_ASYNC_COMPENSATION
@@ -48,7 +88,7 @@ static obs_properties_t *get_properties(void *data)
 
 #ifndef _WIN32
 	prop = obs_properties_add_bool(props, "save", obs_module_text("Prop.SaveFile"));
-	if (s && s->capdev && !capdev_can_save_file(s->capdev, s)) {
+	if (s && need_to_hide_save(s)) {
 		obs_property_set_enabled(prop, false);
 	}
 	obs_properties_add_text(props, "save_filename_fmt", obs_module_text("Prop.SaveFileFormat"), OBS_TEXT_DEFAULT);
