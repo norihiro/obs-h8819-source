@@ -19,7 +19,9 @@ struct packet
 	packet() {}
 	packet(const struct pcap_pkthdr *h, const uint8_t *p) : header(*h)
 	{
-		memcpy(payload, p, std::min((size_t)h->caplen, sizeof(payload)));
+		if (header.caplen > sizeof(payload))
+			header.caplen = sizeof(payload);
+		memcpy(payload, p, header.caplen);
 	}
 };
 
