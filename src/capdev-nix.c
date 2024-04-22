@@ -58,6 +58,10 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 	}
 
 	char *proc_path = obs_module_file(PROC_4219);
+	if (!proc_path) {
+		blog(LOG_ERROR, "failed to find '%s'", PROC_4219);
+		return -1;
+	}
 
 	// TODO: consider using vfork
 	pid_t pid = fork();
