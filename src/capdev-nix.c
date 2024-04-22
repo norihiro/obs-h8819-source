@@ -173,14 +173,35 @@ void *capdev_thread_main(void *data)
 
 	struct capdev_proc_request_s req = {0};
 
+	char *filename = NULL;
+	uint32_t flag_file = 0;
+
 	while (dev->refcnt > -1) {
-		if (dev->channel_mask != req.channel_mask) {
+		if (dev->channel_mask != req.channel_mask ||
+		    (req.flags & (CAPDEV_REQ_FLAG_SAVE | CAPDEV_REQ_FLAG_SAVE_FILENAME)) != flag_file) {
 			req.channel_mask = dev->channel_mask;
-			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
+			req.flags = flag_file;
+			if (flag_file & CAPDEV_REQ_FLAG_SAVE_FILENAME)
+				req.unused = strlen(filename);
+
+			blog(LOG_INFO, "requesting channel_mask=%" PRIx64 " flags=%d", req.channel_mask, req.flags);
 			ssize_t ret = write(fd_req, &req, sizeof(req));
 			if (ret != sizeof(req)) {
 				blog(LOG_ERROR, "write returns %d.", (int)ret);
 				break;
+			}
+
+			if (flag_file & CAPDEV_REQ_FLAG_SAVE_FILENAME) {
+				blog(LOG_INFO, "requesting to save file '%s'", filename);
+				ret = write(fd_req, filename, strlen(filename));
+				if (ret <= 0 || (size_t)ret != strlen(filename)) {
+					blog(LOG_ERROR, "write returns %d, expected %d.", (int)ret,
+					     (int)strlen(filename));
+					break;
+				}
+
+				flag_file &= ~CAPDEV_REQ_FLAG_SAVE_FILENAME;
+				req.flags &= ~CAPDEV_REQ_FLAG_SAVE_FILENAME;
 			}
 		}
 
@@ -242,6 +263,8 @@ void *capdev_thread_main(void *data)
 				capdev_send_blank_audio_to_all_unlocked(dev, header_data.n_skipped_packets * n_samples,
 									timestamp);
 
+			const char *filename_new = NULL;
+
 			for (struct source_list_s *item = dev->sources; item; item = item->next) {
 				float *fltp[N_CHANNELS];
 				for (int i = 0; i < N_CHANNELS && item->channels[i] >= 0; i++) {
@@ -250,7 +273,24 @@ void *capdev_thread_main(void *data)
 				}
 
 				source_add_audio(item->src, fltp, n_samples, timestamp);
+
+				if (item->filename)
+					filename_new = item->filename;
 			}
+
+			if (filename_new && (!filename || strcmp(filename_new, filename) != 0)) {
+				bfree(filename);
+				filename = bstrdup(filename_new);
+				flag_file = CAPDEV_REQ_FLAG_SAVE | CAPDEV_REQ_FLAG_SAVE_FILENAME;
+			}
+			else if (!filename_new) {
+				if (filename) {
+					bfree(filename);
+					filename = NULL;
+				}
+				flag_file = 0;
+			}
+
 			pthread_mutex_unlock(&dev->mutex);
 		}
 
@@ -273,6 +313,7 @@ void *capdev_thread_main(void *data)
 		}
 	}
 
+	bfree(filename);
 	close(fd_req);
 	close(fd_data);
 
