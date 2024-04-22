@@ -140,6 +140,15 @@ void capdev_link_source(capdev_t *dev, source_t *src, const int *channels)
 	pthread_mutex_unlock(&dev->mutex);
 }
 
+static struct source_list_s *source_to_item_unlocked(capdev_t *dev, source_t *src)
+{
+	for (struct source_list_s *item = dev->sources; item; item = item->next) {
+		if (item->src == src)
+			return item;
+	}
+	return NULL;
+}
+
 static void recalculate_channel_mask_unlocked(capdev_t *dev)
 {
 	uint64_t channel_mask = 0;
@@ -153,20 +162,17 @@ void capdev_update_source(capdev_t *dev, source_t *src, const int *channels)
 {
 	pthread_mutex_lock(&dev->mutex);
 
-	for (struct source_list_s *item = dev->sources; item; item = item->next) {
-		if (item->src != src)
-			continue;
-
+	struct source_list_s *item = source_to_item_unlocked(dev, src);
+	if (item) {
 		item->channel_mask = channels_to_mask(channels);
 		for (item->n_channels = 0; item->n_channels < N_CHANNELS; item->n_channels++) {
 			if (channels[item->n_channels] < 0)
 				break;
 			item->channels[item->n_channels] = channels[item->n_channels];
 		}
-		break;
-	}
 
-	recalculate_channel_mask_unlocked(dev);
+		recalculate_channel_mask_unlocked(dev);
+	}
 
 	pthread_mutex_unlock(&dev->mutex);
 }
@@ -189,10 +195,8 @@ static inline void capdev_save_file_unlocked(capdev_t *dev, source_t *src, const
 	if (!capdev_can_save_file_unlocked(dev, src))
 		return;
 
-	for (struct source_list_s *item = dev->sources; item; item = item->next) {
-		if (item->src != src)
-			continue;
-
+	struct source_list_s *item = source_to_item_unlocked(dev, src);
+	if (item) {
 		if (name && item->filename && strcmp(name, item->filename) == 0)
 			return;
 		if (!name && !item->filename)
@@ -200,7 +204,6 @@ static inline void capdev_save_file_unlocked(capdev_t *dev, source_t *src, const
 
 		bfree(item->filename);
 		item->filename = name ? bstrdup(name) : NULL;
-		return;
 	}
 }
 
@@ -223,19 +226,16 @@ void capdev_unlink_source(capdev_t *dev, source_t *src)
 {
 	pthread_mutex_lock(&dev->mutex);
 
-	for (struct source_list_s *item = dev->sources; item; item = item->next) {
-		if (item->src != src)
-			continue;
-
+	struct source_list_s *item = source_to_item_unlocked(dev, src);
+	if (item) {
 		*item->prev_next = item->next;
 		if (item->next)
 			item->next->prev_next = item->prev_next;
 		bfree(item->filename);
 		bfree(item);
-		break;
-	}
 
-	recalculate_channel_mask_unlocked(dev);
+		recalculate_channel_mask_unlocked(dev);
+	}
 
 	pthread_mutex_unlock(&dev->mutex);
 }
