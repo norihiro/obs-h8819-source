@@ -9,6 +9,7 @@ struct source_list_s
 	uint64_t channel_mask;
 	size_t n_channels;
 	int channels[N_CHANNELS];
+	char *filename;
 
 	struct source_list_s *next;
 	struct source_list_s **prev_next;

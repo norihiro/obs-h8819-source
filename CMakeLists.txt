@@ -11,6 +11,7 @@ set(PLUGIN_AUTHOR "Norihiro Kamae")
 set(MACOS_BUNDLEID "net.nagater.obs-h8819-source")
 set(MACOS_PACKAGE_UUID "FAA836AE-8D20-4F85-AC53-34EB8BD1D652")
 set(MACOS_INSTALLER_UUID "E44BD56C-036E-480A-AE87-DAB6DBCFECF9")
+set(PLUGIN_URL "https://obsproject.com/forum/resources/reac-audio-source.1471/")
 set(ID_PREFIX "net.nagater.obs-h8819-source.")
 
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
@@ -78,9 +79,13 @@ if(NOT OS_WINDOWS)
 	add_executable(obs-h8819-proc
 		src/capdev-proc.c
 		src/capdev-proc.h
+		src/pcap-dump-thread.cc
+		src/pcap-dump-thread.h
 	)
 
-	target_link_libraries(obs-h8819-proc pcap)
+	target_compile_features(obs-h8819-proc PRIVATE cxx_std_17)
+
+	target_link_libraries(obs-h8819-proc pcap pthread)
 endif()
 
 if(OS_WINDOWS)

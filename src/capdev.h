@@ -9,6 +9,8 @@ void capdev_release(capdev_t *dev);
 
 void capdev_link_source(capdev_t *dev, source_t *src, const int *channels);
 void capdev_update_source(capdev_t *dev, source_t *src, const int *channels);
+void capdev_save_file(capdev_t *dev, source_t *src, const char *name);
+bool capdev_can_save_file(capdev_t *dev, source_t *src);
 void capdev_unlink_source(capdev_t *dev, source_t *src);
 
 void capdev_enum_devices(void (*cb)(const char *name, const char *description, void *param), void *param);
