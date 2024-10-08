@@ -106,6 +106,10 @@ if(OS_LINUX)
 	configure_file(installer/linux-setcap.sh.in setcap.sh)
 	install(CODE "execute_process(COMMAND ./setcap.sh)")
 
+	if(CMAKE_C_COMPILER_ID STREQUAL GNU)
+		target_compile_options(${PROJECT_NAME} PRIVATE -fanalyzer)
+	endif()
+
 	if(ENABLE_COVERAGE)
 		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
 		target_link_options(${PROJECT_NAME} PRIVATE -coverage)
