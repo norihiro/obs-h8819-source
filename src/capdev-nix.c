@@ -60,35 +60,25 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 
 	if (fd_req && pipe2(pipe_req, O_CLOEXEC) < 0) {
 		blog(LOG_ERROR, "failed to create pipe");
-		return -1;
+		goto fail0;
 	}
 
 	if (pipe2(pipe_data, O_CLOEXEC) < 0) {
 		blog(LOG_ERROR, "failed to create pipe");
-		if (pipe_req[0] >= 0) {
-			close(pipe_req[0]);
-			close(pipe_req[1]);
-		}
-		return -1;
+		goto fail1;
 	}
 
 	char *proc_path = obs_module_file(PROC_4219);
 	if (!proc_path) {
 		blog(LOG_ERROR, "failed to find '%s'", PROC_4219);
-		return -1;
+		goto fail2;
 	}
 
 	// TODO: consider using vfork
 	pid_t pid = fork();
 	if (pid < 0) {
 		blog(LOG_ERROR, "failed to fork");
-		if (pipe_req[0] >= 0) {
-			close(pipe_req[0]);
-			close(pipe_req[1]);
-		}
-		close(pipe_data[0]);
-		close(pipe_data[1]);
-		bfree(proc_path);
+		goto fail3;
 		return -1;
 	}
 
@@ -107,12 +97,12 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 #else // Linux
 		close_range(3, 65535, 0);
 #endif
-		if (execlp(proc_path, PROC_4219, name, NULL) < 0) {
-			fprintf(stderr, "Error: failed to exec \"%s\"\n", proc_path);
-			close(0);
-			close(1);
-			exit(1);
-		}
+		int ret = execlp(proc_path, PROC_4219, name, NULL);
+
+		fprintf(stderr, "Error: failed to exec '%s' ret code: %d\n", proc_path, ret);
+		close(0);
+		close(1);
+		exit(1);
 	}
 
 	if (fd_req) {
@@ -125,6 +115,19 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 	bfree(proc_path);
 
 	return pid;
+
+fail3:
+	bfree(proc_path);
+fail2:
+	close(pipe_data[0]);
+	close(pipe_data[1]);
+fail1:
+	if (fd_req) {
+		close(pipe_req[0]);
+		close(pipe_req[1]);
+	}
+fail0:
+	return -1;
 }
 
 static inline void s24lep_to_fltp(float *ptr_dst, const uint8_t *ptr_src, size_t n_samples)

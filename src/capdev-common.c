@@ -82,6 +82,8 @@ void capdev_release(capdev_t *dev)
 static capdev_t *capdev_create_unlocked(const char *device_name)
 {
 	capdev_t *dev = bzalloc(sizeof(struct capdev_s));
+	if (!dev)
+		return NULL;
 	dev->name = bstrdup(device_name);
 	dev->next = devices;
 	dev->prev_next = &devices;
