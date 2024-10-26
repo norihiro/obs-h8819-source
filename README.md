@@ -1,8 +1,9 @@
-# OBS h8819 Source Plugin - Audio over Ethernet Source for REAC
+# h8819 Source Plugin - Audio over Ethernet Source
 
 ## Introduction
 
-This plugin provides audio source(s) from REAC, which is an audio-over-ethernet protocol developed by Roland.
+This plugin captures audio packets from REAC, which is an audio-over-ethernet protocol developed by Roland,
+and provides the audio as sources on OBS Studio.
 
 Why h8819... This plugin captures packets whose EtherType is 0x8819.
 An initial `h` is added to express that the hardware was made by the company at Hamamatsu, Japan.
