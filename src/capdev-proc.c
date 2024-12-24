@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <pcap.h>
 #include "capdev-proc.h"
+#include "pcap-dump-thread.h"
 #include "common.h"
 
 #define ETHER_HEADER_LEN (6 * 2 + 2)
@@ -183,6 +185,7 @@ int main(int argc, char **argv)
 	int fd_pcap = pcap_get_selectable_fd(p);
 
 	struct context_s ctx = {0};
+	pcap_dump_thread_t *pdt = NULL, *pdt_prev = NULL;
 
 	for (ctx.cont = true; ctx.cont;) {
 		int nfds = 1;
@@ -205,8 +208,9 @@ int main(int argc, char **argv)
 
 		if (FD_ISSET(0, &readfds)) {
 			size_t bytes = read(0, &ctx.req, sizeof(ctx.req));
-			if (bytes == 0 || ctx.req.flags & CAPDEV_REQ_FLAG_EXIT) {
-				fprintf(stderr, "Info normal exit '%s'\n", if_name ? if_name : "(null)");
+			if (bytes == 0 || (ctx.req.flags & CAPDEV_REQ_FLAG_EXIT)) {
+				fprintf(stderr, "Info normal exit '%s' bytes=%d flags=%d\n",
+					if_name ? if_name : "(null)", (int)bytes, (int)ctx.req.flags);
 				ctx.cont = false;
 				break;
 			}
@@ -215,6 +219,31 @@ int main(int argc, char **argv)
 					(int)sizeof(ctx.req));
 				ctx.cont = false;
 				break;
+			}
+
+			if (pdt && ((ctx.req.flags & CAPDEV_REQ_FLAG_SAVE_FILENAME) ||
+				    !(ctx.req.flags & CAPDEV_REQ_FLAG_SAVE))) {
+				fprintf(stderr, "Info: finalizing to dump file\n");
+				pcap_dump_thread_stop(pdt);
+
+				pcap_dump_thread_release(pdt_prev);
+				pdt_prev = pdt;
+				pdt = NULL;
+			}
+
+			if (ctx.req.flags & CAPDEV_REQ_FLAG_SAVE_FILENAME) {
+				size_t len = ctx.req.unused;
+				char *name = malloc(len + 1);
+				name[len] = 0;
+				ssize_t len_read = read(0, name, len);
+				if (len_read != len) {
+					fprintf(stderr, "Error: read %zd bytes, expected %zu bytes.\n", len_read, len);
+					ctx.cont = false;
+					break;
+				}
+				fprintf(stderr, "Info: preparing to dump file '%s'\n", name);
+				pdt = pcap_dump_thread_create(p, name);
+				free(name);
 			}
 		}
 
@@ -226,10 +255,17 @@ int main(int argc, char **argv)
 		if (fd_pcap < 0 || FD_ISSET(fd_pcap, &readfds)) {
 			struct pcap_pkthdr *header;
 			const uint8_t *payload;
-			if (pcap_next_ex(p, &header, &payload) == 1)
+			if (pcap_next_ex(p, &header, &payload) == 1) {
 				got_msg(payload, header, &ctx);
+				if (pdt) {
+					pcap_dump_thread_dump(pdt, header, payload);
+				}
+			}
 		}
 	}
+
+	pcap_dump_thread_release(pdt_prev);
+	pcap_dump_thread_release(pdt);
 
 	pcap_close(p);
 
