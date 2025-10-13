@@ -67,7 +67,7 @@ jobs:
           path: '${{ env.FILE_NAME }}'
       - name: Check package
         run: |
-          . ci/ci_includes.generated.sh
+          . build/ci/ci_includes.generated.sh
           set -ex
           sudo apt install '${{ env.FILE_NAME }}'
           ldd /usr/lib/x86_64-linux-gnu/obs-plugins/${PLUGIN_NAME}.so > ldd.out
@@ -155,12 +155,11 @@ jobs:
             -D OBS_BUNDLE_CODESIGN_IDENTITY='${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}' \
             ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS }}
           cmake --build build --config RelWithDebInfo
-          echo "PKG_SUFFIX='$PKG_SUFFIX'" >> ci/ci_includes.generated.sh
 
       - name: Prepare package
         run: |
           set -ex
-          . ci/ci_includes.generated.sh
+          . build/ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
           (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ MacOS/${PLUGIN_NAME})
           cp build/obs-h8819-proc release/${PLUGIN_NAME}.plugin/Contents/Resources/
@@ -169,7 +168,7 @@ jobs:
       - name: Codesign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
-          . ci/ci_includes.generated.sh
+          . build/ci/ci_includes.generated.sh
           set -e
           for dylib in release/${PLUGIN_NAME}*/lib/*.dylib; do
             test -f "$dylib" || continue
@@ -186,7 +185,7 @@ jobs:
 
       - name: Package
         run: |
-          . ci/ci_includes.generated.sh
+          . build/ci/ci_includes.generated.sh
           set -ex
           zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
           mkdir package
@@ -199,10 +198,10 @@ jobs:
       - name: Productsign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
-          . ci/ci_includes.generated.sh
+          . build/ci/ci_includes.generated.sh
           pkgfile=package/${PLUGIN_NAME}${PKG_SUFFIX}.pkg
           set -e
-          . ci/ci_includes.generated.sh
+          . build/ci/ci_includes.generated.sh
           productsign --sign "${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}" $pkgfile package/${PLUGIN_NAME}-signed.pkg
           mv package/${PLUGIN_NAME}-signed.pkg $pkgfile
 

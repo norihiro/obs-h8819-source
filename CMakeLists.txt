@@ -40,20 +40,20 @@ endif()
 
 configure_file(
 	src/plugin-macros.h.in
-	../src/plugin-macros.generated.h
+	plugin-macros.generated.h
 )
 configure_file(
 	installer/installer-Windows.iss.in
-	../installer/installer-Windows.generated.iss
+	installer-Windows.generated.iss
 )
 
 configure_file(
 	ci/ci_includes.sh.in
-	../ci/ci_includes.generated.sh
+	ci/ci_includes.generated.sh
 )
 configure_file(
 	ci/ci_includes.cmd.in
-	../ci/ci_includes.generated.cmd
+	ci/ci_includes.generated.cmd
 )
 
 set(PLUGIN_SOURCES
@@ -83,6 +83,11 @@ if(NOT OS_WINDOWS)
 
 	target_link_libraries(obs-h8819-proc pcap)
 endif()
+
+target_include_directories(${PROJECT_NAME}
+	PRIVATE
+	${CMAKE_CURRENT_BINARY_DIR}
+)
 
 if(OS_WINDOWS)
 	# Enable Multicore Builds and disable FH4 (to not depend on VCRUNTIME140_1.DLL when building with VS2019)
