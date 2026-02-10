@@ -1,0 +1,21 @@
+Source: h8819-source-for-obs
+Section: video
+Priority: optional
+Maintainer: Norihiro Kamae <norihiro-ppa-plugins-for-obs-studio@nagater.net>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ obs-studio,
+ libsimde-dev,
+ libpcap-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/norihiro/obs-h8819-source
+
+Package: h8819-source-for-obs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: obs-h8819-source
+Description: REAC source plugin for obs-studio
+ This plugin captures audio packets from READ, an audio-over-ethernet protocol.
+ .

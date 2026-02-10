@@ -1,0 +1,39 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9db5e9d..23c2f9b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -106,7 +106,7 @@ if(OS_LINUX)
+ 	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra)
+ 
+ 	install(TARGETS obs-h8819-proc
+-		DESTINATION "${CMAKE_INSTALL_FULL_DATAROOTDIR}/obs/obs-plugins/${CMAKE_PROJECT_NAME}")
++		DESTINATION "${CMAKE_INSTALL_FULL_LIBEXECDIR}/")
+ 
+ 	configure_file(installer/linux-setcap.sh.in setcap.sh)
+ 	install(CODE "execute_process(COMMAND ./setcap.sh)")
+diff --git a/src/capdev-nix.c b/src/capdev-nix.c
+index 1365ff7..7cf7ee7 100644
+--- a/src/capdev-nix.c
++++ b/src/capdev-nix.c
+@@ -68,7 +68,7 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
+ 		goto fail1;
+ 	}
+ 
+-	char *proc_path = obs_module_file(PROC_4219);
++	const char *proc_path = "/usr/libexec/obs-h8819-proc";
+ 	if (!proc_path) {
+ 		blog(LOG_ERROR, "failed to find '%s'", PROC_4219);
+ 		goto fail2;
+@@ -112,12 +112,9 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
+ 	*fd_data = pipe_data[0];
+ 	close(pipe_data[1]);
+ 
+-	bfree(proc_path);
+-
+ 	return pid;
+ 
+ fail3:
+-	bfree(proc_path);
+ fail2:
+ 	close(pipe_data[0]);
+ 	close(pipe_data[1]);

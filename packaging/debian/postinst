@@ -1,0 +1,13 @@
+#! /bin/bash
+
+set -e
+
+if test "$UID" == "0"; then
+	sudo=''
+else
+	sudo='sudo'
+fi
+
+echo Executing $sudo setcap cap_net_raw=eip /usr/libexec/obs-h8819-proc
+$sudo setcap cap_net_raw=eip /usr/libexec/obs-h8819-proc
+#DEBHELPER#
