@@ -2,9 +2,9 @@
 
 set -ex
 
-curl -O https://npcap.com/dist/npcap-sdk-1.15.zip
-sha256sum -c <<<'52c7b9fb4abee3ad9fe739bb545c3efe77b731c8e127122bdf328eafdae3ed4f npcap-sdk-1.15.zip'
-7z x npcap-sdk-1.15.zip
+curl -O https://npcap.com/dist/npcap-sdk-1.16.zip
+sha256sum -c <<<'f0a8be7778ee3ae1b99bbbecb27a3ff0f6c111a4093f1c78c5c5a099607184db npcap-sdk-1.16.zip'
+7z x npcap-sdk-1.16.zip
 
 function path_unix2win
 {
