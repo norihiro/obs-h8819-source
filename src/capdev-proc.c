@@ -191,6 +191,7 @@ int main(int argc, char **argv)
 		fd_set readfds;
 		fd_set exceptfds;
 		FD_ZERO(&readfds);
+		FD_ZERO(&exceptfds);
 		FD_SET(0, &readfds);
 		FD_SET(0, &exceptfds);
 		if (fd_pcap >= 0)
