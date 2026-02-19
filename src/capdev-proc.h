@@ -13,6 +13,6 @@ struct capdev_proc_header_s
 {
 	uint64_t channel_mask;
 	int64_t timestamp;
-	int n_data_bytes;
-	int n_skipped_packets;
+	uint32_t n_data_bytes;
+	uint32_t n_skipped_packets;
 };

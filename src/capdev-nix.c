@@ -205,14 +205,14 @@ void *capdev_thread_main(void *data)
 
 		uint8_t buf[1500];
 		float fltp_buf[500];
-		if (header_data.n_data_bytes > (int)sizeof(buf)) {
-			blog(LOG_ERROR, "header_data.n_data_bytes = %d is too large.", header_data.n_data_bytes);
+		if (header_data.n_data_bytes > (uint32_t)sizeof(buf)) {
+			blog(LOG_ERROR, "header_data.n_data_bytes = %u is too large.", header_data.n_data_bytes);
 			break;
 		}
 		ret = read(fd_data, buf, header_data.n_data_bytes);
 		if (ret != header_data.n_data_bytes) {
-			blog(LOG_ERROR, "capdev capdev_thread_main: read returns %d expected %d.", (int)ret,
-			     (int)header_data.n_data_bytes);
+			blog(LOG_ERROR, "capdev capdev_thread_main: read returns %d expected %u.", (int)ret,
+			     header_data.n_data_bytes);
 			break;
 		}
 
