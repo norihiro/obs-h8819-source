@@ -205,6 +205,10 @@ void *capdev_thread_main(void *data)
 		struct timeval timeout = {.tv_sec = 0, .tv_usec = 50 * 1000};
 		int ret_select = select(fd_data + 1, &readfds, NULL, NULL, &timeout);
 
+		if (ret_select < 0) {
+			blog(LOG_ERROR, "select returns %d", ret_select);
+			break;
+		}
 		if (ret_select <= 0)
 			continue;
 
