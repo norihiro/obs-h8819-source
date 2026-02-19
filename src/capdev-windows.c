@@ -46,6 +46,10 @@ static pcap_t *initialize_pcap(struct capdev_s *dev)
 	pcap_set_buffer_size(p, 4 * 256 * 1024);
 
 	int ret = pcap_activate(p);
+	if (ret) {
+		blog(LOG_WARNING, "pcap_activate: %s", pcap_geterr(p));
+	}
+
 	struct bpf_program fp = {0};
 	ret = pcap_compile(p, &fp, "ether proto 0x8819", 1, PCAP_NETMASK_UNKNOWN);
 	if (ret) {
