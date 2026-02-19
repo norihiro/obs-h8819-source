@@ -120,16 +120,21 @@ static uint64_t channels_to_mask(const int *channels)
 	return channel_mask;
 }
 
-void capdev_link_source(capdev_t *dev, source_t *src, const int *channels)
+static void item_set_channels_unlocked(struct source_list_s *item, const int *channels)
 {
-	struct source_list_s *item = bzalloc(sizeof(struct source_list_s));
-	item->src = src;
 	item->channel_mask = channels_to_mask(channels);
 	for (item->n_channels = 0; item->n_channels < N_CHANNELS; item->n_channels++) {
 		if (channels[item->n_channels] < 0)
 			break;
 		item->channels[item->n_channels] = channels[item->n_channels];
 	}
+}
+
+void capdev_link_source(capdev_t *dev, source_t *src, const int *channels)
+{
+	struct source_list_s *item = bzalloc(sizeof(struct source_list_s));
+	item->src = src;
+	item_set_channels_unlocked(item, channels);
 
 	pthread_mutex_lock(&dev->mutex);
 	item->next = dev->sources;
@@ -159,12 +164,7 @@ void capdev_update_source(capdev_t *dev, source_t *src, const int *channels)
 		if (item->src != src)
 			continue;
 
-		item->channel_mask = channels_to_mask(channels);
-		for (item->n_channels = 0; item->n_channels < N_CHANNELS; item->n_channels++) {
-			if (channels[item->n_channels] < 0)
-				break;
-			item->channels[item->n_channels] = channels[item->n_channels];
-		}
+		item_set_channels_unlocked(item, channels);
 		break;
 	}
 
