@@ -247,7 +247,7 @@ void *capdev_thread_main(void *data)
 
 			for (struct source_list_s *item = dev->sources; item; item = item->next) {
 				float *fltp[N_CHANNELS];
-				for (int i = 0; i < N_CHANNELS && item->channels[i] >= 0; i++) {
+				for (uint32_t i = 0; i < item->n_channels; i++) {
 					float *p = fltp_all[item->channels[i]];
 					fltp[i] = p ? p : ptr;
 				}

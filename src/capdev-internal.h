@@ -7,7 +7,7 @@ struct source_list_s
 {
 	source_t *src;
 	uint64_t channel_mask;
-	size_t n_channels;
+	uint32_t n_channels;
 	int channels[N_CHANNELS];
 
 	struct source_list_s *next;
