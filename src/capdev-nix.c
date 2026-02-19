@@ -272,7 +272,7 @@ void *capdev_thread_main(void *data)
 		req.flags |= CAPDEV_REQ_FLAG_EXIT;
 		ssize_t ret = write(fd_req, &req, sizeof(req));
 		if (ret != sizeof(req)) {
-			blog(LOG_ERROR, "write returns %d.", (int)ret);
+			blog(LOG_ERROR, "write returns %zd.", ret);
 		}
 	}
 
