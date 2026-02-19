@@ -163,6 +163,19 @@ static int64_t estimate_timestamp(struct capdev_s *dev, const struct capdev_proc
 	return ts;
 }
 
+static bool update_channel_mask(struct capdev_proc_request_s *req, struct capdev_s *dev)
+{
+	if (pthread_mutex_trylock(&dev->mutex) != 0)
+		return false;
+	bool ret = false;
+	if (dev->channel_mask != req->channel_mask) {
+		ret = true;
+		req->channel_mask = dev->channel_mask;
+	}
+	pthread_mutex_unlock(&dev->mutex);
+	return ret;
+}
+
 void *capdev_thread_main(void *data)
 {
 	os_set_thread_name("h8819");
@@ -177,8 +190,7 @@ void *capdev_thread_main(void *data)
 	struct capdev_proc_request_s req = {0};
 
 	while (dev->refcnt > -1) {
-		if (dev->channel_mask != req.channel_mask) {
-			req.channel_mask = dev->channel_mask;
+		if (update_channel_mask(&req, dev)) {
 			blog(LOG_INFO, "requesting channel_mask=%" PRIx64, req.channel_mask);
 			ssize_t ret = write(fd_req, &req, sizeof(req));
 			if (ret != sizeof(req)) {
