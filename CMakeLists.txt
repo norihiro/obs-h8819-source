@@ -126,6 +126,13 @@ if(APPLE)
 	set(MACOSX_PLUGIN_GUI_IDENTIFIER "${MACOS_BUNDLEID}")
 	set(MACOSX_PLUGIN_BUNDLE_VERSION "${CMAKE_PROJECT_VERSION}")
 	set(MACOSX_PLUGIN_SHORT_VERSION_STRING "1")
+
+	if(ENABLE_COVERAGE)
+		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
+		target_link_options(${PROJECT_NAME} PRIVATE --coverage)
+		target_compile_options(obs-h8819-proc PRIVATE -coverage)
+		target_link_options(obs-h8819-proc PRIVATE -coverage)
+	endif()
 endif()
 
 setup_plugin_target(${CMAKE_PROJECT_NAME})
