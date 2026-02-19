@@ -116,7 +116,7 @@ static uint64_t channels_to_mask(const int *channels)
 {
 	uint64_t channel_mask = 0;
 	for (size_t ix = 0; channels[ix] >= 0; ix++)
-		channel_mask |= 1LL << channels[ix];
+		channel_mask |= 1ULL << channels[ix];
 	return channel_mask;
 }
 
