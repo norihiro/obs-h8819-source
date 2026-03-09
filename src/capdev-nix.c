@@ -79,7 +79,6 @@ static pid_t thread_start_proc(const char *name, int *fd_req, int *fd_data)
 	if (pid < 0) {
 		blog(LOG_ERROR, "failed to fork");
 		goto fail3;
-		return -1;
 	}
 
 	if (pid == 0) {
