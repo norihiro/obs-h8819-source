@@ -16,10 +16,9 @@ and provides the audio as sources on OBS Studio.
 
 %prep
 %autosetup -p1
-sed -i -e 's/project(obs-/project(/g' CMakeLists.txt
 
 %build
-%{cmake} -DLINUX_PORTABLE=OFF -DCMAKE_SKIP_RPATH:BOOL=ON -DQT_VERSION=6
+%{cmake} -DLINUX_PORTABLE=OFF -DCMAKE_SKIP_RPATH:BOOL=ON
 %{cmake_build}
 
 %install
