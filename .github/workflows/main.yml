@@ -16,6 +16,7 @@ on:
 
 env:
   artifactName: ${{ contains(github.ref_name, '/') && 'artifact' || github.ref_name }}
+  qt: false
 
 jobs:
   linux_build:
@@ -35,7 +36,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -45,6 +46,7 @@ jobs:
         with:
           obs: ${{ matrix.obs }}
           verbose: true
+          qt: ${{ env.qt }}
 
       - name: Build plugin
         run: |
@@ -60,22 +62,32 @@ jobs:
           make -j4
           make package
           echo "FILE_NAME=$(find $PWD -name '*.deb' | head -n 1)" >> $GITHUB_ENV
+
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifactName }}-linux-obs${{ matrix.obs }}-${{ matrix.ubuntu }}
           path: '${{ env.FILE_NAME }}'
-      - name: Check package
+
+      - name: 'Setup with onsdriver'
+        uses: noris-plugins-for-obs/onsdriver@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          obs-plugins: ${{ env.FILE_NAME }}
+          first-time-log: ./logs/
+
+      - name: 'Test with onsdriver'
         run: |
-          . build/ci/ci_includes.generated.sh
-          set -ex
-          sudo apt install -y '${{ env.FILE_NAME }}'
-          ldd /usr/lib/x86_64-linux-gnu/obs-plugins/${PLUGIN_NAME}.so > ldd.out
-          if grep not.found ldd.out ; then
-            echo "Error: unresolved shared object." >&2
-            exit 1
-          fi
-          ls /usr/share/obs/obs-plugins/${PLUGIN_NAME}/
+          python -m unittest discover test-onsdriver/
+
+      - name: 'Upload logs of onsdriver'
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-${{ env.artifactName }}-linux-obs${{ matrix.obs }}-${{ matrix.ubuntu }}
+          path: |
+            logs/*
 
   macos_build:
     runs-on: macos-14
@@ -89,7 +101,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -115,7 +127,7 @@ jobs:
 
       - name: Install Apple Developer Certificate
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
-        uses: apple-actions/import-codesign-certs@63fff01cd422d4b7b855d40ca1e9d34d2de9427d # v3.0.0
+        uses: apple-actions/import-codesign-certs@fe74d46e82474f87e1ba79832ad28a4013d0e33a # v6.1.0
         with:
           keychain-password: ${{ github.run_id }}
           p12-file-base64: ${{ secrets.MACOS_SIGNING_CERT }}
@@ -135,15 +147,14 @@ jobs:
         id: obsdeps
         uses: norihiro/obs-studio-devel-action@v2
         with:
-          path: /tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
           arch: ${{ matrix.arch }}
           obs: ${{ matrix.obs }}
           verbose: true
+          qt: ${{ env.qt }}
 
       - name: Build plugin
         run: |
           arch=${{ matrix.arch }}
-          deps=/tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
           GIT_TAG=$(git describe --tags --always)
           PKG_SUFFIX=-${GIT_TAG}-obs${{ matrix.obs }}-macos-${{ matrix.arch }}
           set -e
@@ -169,7 +180,7 @@ jobs:
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           . build/ci/ci_includes.generated.sh
-          set -e
+          set -ex
           for dylib in release/${PLUGIN_NAME}*/lib/*.dylib; do
             test -f "$dylib" || continue
             codesign --remove-signature "$dylib"
@@ -193,7 +204,6 @@ jobs:
           zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
           mkdir package
           (cd release/ && zip -r $zipfile ${PLUGIN_NAME}.plugin)
-          ci/macos/install-packagesbuild.sh
           packagesbuild \
             --build-folder $PWD/package/ \
             build/installer-macOS.generated.pkgproj
@@ -204,7 +214,6 @@ jobs:
           . build/ci/ci_includes.generated.sh
           pkgfile=package/${PLUGIN_NAME}${PKG_SUFFIX}.pkg
           set -e
-          . build/ci/ci_includes.generated.sh
           productsign --sign "${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}" $pkgfile package/${PLUGIN_NAME}-signed.pkg
           mv package/${PLUGIN_NAME}-signed.pkg $pkgfile
 
@@ -217,10 +226,30 @@ jobs:
           verbose: true
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifactName }}-macos-obs${{ matrix.obs }}-${{ matrix.arch }}
           path: package/*
+
+      - name: 'Setup with onsdriver'
+        uses: noris-plugins-for-obs/onsdriver@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          obs-plugins: package/*.pkg
+          first-time-log: ./logs/
+
+      - name: 'Test with onsdriver'
+        run: |
+          python -m unittest discover test-onsdriver/
+
+      - name: 'Upload logs of onsdriver'
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-${{ env.artifactName }}-macos-obs${{ matrix.obs }}-${{ matrix.arch }}
+          path: |
+            logs/*
 
   windows_build:
     runs-on: windows-2022
@@ -237,14 +266,16 @@ jobs:
         shell: pwsh
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
+
       - name: Download obs-studio
         id: obsdeps
         uses: norihiro/obs-studio-devel-action@v2
         with:
           obs: ${{ matrix.obs }}
+          qt: ${{ env.qt }}
 
       - name: Prepare Npcap
         shell: bash
@@ -262,10 +293,43 @@ jobs:
           cmake -S . -B build ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS_PS }} @CmakeArgs
           cmake --build build --config RelWithDebInfo -j 4
           cmake --install build --config RelWithDebInfo --prefix "$(Resolve-Path -Path .)/release"
+
       - name: Package plugin
         run: ci/windows/package-windows.cmd ${{ matrix.obs }}
+
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.artifactName }}-windows-obs${{ matrix.obs }}-${{ matrix.arch }}
           path: package/*
+
+      - name: 'Install npcap on Windows'
+        shell: bash
+        run: |
+          : npcap
+          set -e
+          mkdir /tmp/npcap
+          cd /tmp/npcap
+          curl -O https://www.nagater.net/obs-studio/npcap-1.87.zip
+          unzip npcap-1.87.zip
+          mv *.dll 'C:/windows/system32/'
+
+      - name: 'Setup with onsdriver'
+        uses: noris-plugins-for-obs/onsdriver@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          obs-plugins: package/*.exe
+          first-time-log: ./logs/
+
+      - name: 'Test with onsdriver'
+        run: |
+          python -m unittest discover test-onsdriver/
+
+      - name: 'Upload logs of onsdriver'
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-${{ env.artifactName }}-windows-obs${{ matrix.obs }}-${{ matrix.arch }}
+          path: |
+            logs/*
